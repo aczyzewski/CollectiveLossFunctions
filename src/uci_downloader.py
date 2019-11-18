@@ -74,7 +74,7 @@ class UCIDatabaseEntry():
         for single_file in files:
             if 'Parent Directory' not in single_file.text and 'Index' not in single_file.text:
                 downloaded_file = requests.get(urllib.parse.urljoin(url_to_list_of_files, single_file.get('href')))
-                open(os.path.join(output_directory, single_file.text), 'wb').write(downloaded_file.content)
+                open(os.path.join(output_directory, single_file.text.strip()), 'wb').write(downloaded_file.content)
 
     def __get_download_url(self) -> str:
         """ Retrieves URL to dataset's files """
