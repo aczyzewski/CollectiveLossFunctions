@@ -10,9 +10,9 @@ from typing import List, Dict, Callable, Dict, Any
 
 # Notes:
 # --------
-# TODO: self.verbose (UCIDatabaseEntry, UCIDatabase) is not used.
-# TODO: complete the documentation
-# TODO: add tests
+# TODO: `self.verbose` (UCIDatabaseEntry, UCIDatabase) is not used.
+# TODO: Documentation
+# TODO: Tests
 
 class UCIDatabaseEntry():
     """ Simple structure to mangae single UCI's dataset """
@@ -66,7 +66,7 @@ class UCIDatabaseEntry():
         os.makedirs(output_directory, exist_ok=True)
         
         # Retrieve list of files of the dataset
-        url_to_list_of_files = self.__get_download_url()
+        url_to_list_of_files = self._get_download_url()
         file_list_as_html = requests.get(url_to_list_of_files).content
         files = etree.HTML(file_list_as_html).xpath(".//*[self::a]")
         
@@ -76,7 +76,7 @@ class UCIDatabaseEntry():
                 downloaded_file = requests.get(urllib.parse.urljoin(url_to_list_of_files, single_file.get('href')))
                 open(os.path.join(output_directory, single_file.text.strip()), 'wb').write(downloaded_file.content)
 
-    def __get_download_url(self) -> str:
+    def _get_download_url(self) -> str:
         """ Retrieves URL to dataset's files """
 
         # XPath to "Data Folder" button on the dataset's page.
@@ -99,9 +99,9 @@ class UCIDatabase():
         self.cache_file = cache_file
         self.datasets = []
 
-        if not load_from_cache or not self.__load_cached_data():
-           self.__generate_dataset()
-           self.__cache_data()
+        if not load_from_cache or not self._load_cached_data():
+           self._fetch_the_list_of_datasets()
+           self._cache_data()
            
     def get(self, function: Callable, download: bool = True) -> List[str]:
         """ Returns datasets that comply the filter function """
@@ -114,7 +114,7 @@ class UCIDatabase():
 
         return filtered_datasets
 
-    def __cache_data(self):
+    def _cache_data(self):
         """ Saves cached datasets as CSV file on the disk. """
 
         columns = ['name', 'url', 'data_types', 'default_tasks', 'attribute_types', 'no_instances', 'no_attribues', 'year']
@@ -126,7 +126,7 @@ class UCIDatabase():
         output_csv = pd.DataFrame(output_data, columns=columns)
         output_csv.to_csv(os.path.join(self.output_directory, self.cache_file), sep=';', index=False)
 
-    def __load_cached_data(self) -> bool:
+    def _load_cached_data(self) -> bool:
         """ Saves cached data as CSV on the disk.
         
             Returns:
@@ -147,8 +147,8 @@ class UCIDatabase():
             return True
         return False
         
-    def __generate_dataset(self, split_values_in_cols: List[int] = [1, 2, 3]) -> None:
-        """ """
+    def _fetch_the_list_of_datasets(self, split_values_in_cols: List[int] = [1, 2, 3]) -> None:
+        """ Extracts list of available UCI dataset from the website """
 
         def remove_non_ascii_characters(text: str) -> str:
             printable = set(string.printable)
