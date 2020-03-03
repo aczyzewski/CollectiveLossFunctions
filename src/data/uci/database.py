@@ -4,9 +4,12 @@ import requests
 import string
 import pandas as pd
 import urllib
+from typing import List, Dict, Callable, Dict, Any
+
 from shutil import rmtree
 from lxml import etree
-from typing import List, Dict, Callable, Dict, Any
+
+from . import preprocessing
 
 # Notes:
 # --------
@@ -17,7 +20,7 @@ from typing import List, Dict, Callable, Dict, Any
 class UCIDatabaseEntry():
     """ Simple structure to mangae single UCI's dataset """
 
-    def __init__(self, name: str, url: str, data_types: List[str], default_tasks: List[str], attribute_types: List[str], no_instances: int, no_attributes: int, year: int, verbose: bool = True) -> None:
+    def __init__(self, name: str, url: str, data_types: List[str], default_tasks: List[str], attribute_types: List[str], no_instances: int, no_attributes: int, year: int, output_directory: str, convert_to_df_method: Callable = None, verbose: bool = True) -> None:
         """ Initialize default values of the class.
         
             Args:
@@ -35,6 +38,7 @@ class UCIDatabaseEntry():
         # Base parameters
         self.base_url = "https://archive.ics.uci.edu/ml/"
         self.verbose = verbose
+        self.output_directory = output_directory
         self.local_path = None
         
         # Save arguments
@@ -47,7 +51,13 @@ class UCIDatabaseEntry():
         self.no_attributes = no_attributes
         self.year = year
 
-    def download(self, location: str, overwrite: bool = False) -> None:
+        # Convertion method
+        def raise_not_implemented_error(*args):
+            raise NotImplementedError("The convertion method to DataFrame is not implemented!")
+
+        self.convert_to_df_method = raise_not_implemented_error if convert_to_df_method is None else convert_to_df_method
+
+    def download(self, overwrite: bool = False) -> None:
         """ Saves files from the dataset to disk 
 
             Args:
@@ -56,25 +66,34 @@ class UCIDatabaseEntry():
                  dataset to save the files in it)
         """
 
-        output_directory = os.path.join(location, self.name)
-        self.local_path = output_directory
-
-        # Skip if dataset is on the disk
-        if os.path.isdir(output_directory) and not overwrite:
+        self.local_path = os.path.join(self.output_directory, self.name)
+        
+        # Skip if dataset is on the disk        
+        if os.path.isdir(self.local_path) and not overwrite:
+            print('The dataset exists on the disk.')
             return
 
-        os.makedirs(output_directory, exist_ok=True)
+        os.makedirs(self.local_path, exist_ok=True)
         
         # Retrieve list of files of the dataset
         url_to_list_of_files = self._get_download_url()
         file_list_as_html = requests.get(url_to_list_of_files).content
         files = etree.HTML(file_list_as_html).xpath(".//*[self::a]")
         
+        # Unnecessary URLs
+        url_blacklist = set(['Parent Directory', 'Index', 'Name', 'Last modified', 'Size', 'Description'])
+
         # Save each file on the disk
         for single_file in files:
-            if 'Parent Directory' not in single_file.text and 'Index' not in single_file.text:
+            if single_file.text not in url_blacklist:
                 downloaded_file = requests.get(urllib.parse.urljoin(url_to_list_of_files, single_file.get('href')))
-                open(os.path.join(output_directory, single_file.text.strip()), 'wb').write(downloaded_file.content)
+                open(os.path.join(self.local_path, single_file.text.strip()), 'wb').write(downloaded_file.content)
+
+    def to_df(self) -> pd.DataFrame:
+        """ Applies convertion method on downloaded files to create DataFrame """
+        if self.local_path is None:
+            raise Exception("Download the dataset first!")
+        return self.convert_to_df_method(self.local_path)
 
     def _get_download_url(self) -> str:
         """ Retrieves URL to dataset's files """
@@ -90,7 +109,7 @@ class UCIDatabaseEntry():
 class UCIDatabase():
     """ Wrapper for UCI Datasets (archive.ics.uci.edu) """
 
-    def __init__(self, url: str = "https://archive.ics.uci.edu/ml/datasets.php", output_directory: str = "datasets", cache_file: str = 'datasets.csv', load_from_cache: bool = True) -> None:
+    def __init__(self, url: str = "https://archive.ics.uci.edu/ml/datasets.php", output_directory: str = "datasets", cache_file: str = 'datasets.csv', load_from_cache: bool = True, verbose: bool = False) -> None:
 
         self.output_directory = output_directory
         os.makedirs(self.output_directory, exist_ok=True)
@@ -98,21 +117,18 @@ class UCIDatabase():
         self.url = url
         self.cache_file = cache_file
         self.datasets = []
+        self.verbose = verbose
 
-        if not load_from_cache or not self._load_cached_data():
-           self._fetch_the_list_of_datasets()
-           self._cache_data()
+        if not load_from_cache or not self._load_cached_data():          
+            self._fetch_the_list_of_datasets()
+            self._cache_data()
            
-    def get(self, function: Callable, download: bool = True) -> List[str]:
+    def get(self, function: Callable, download: bool = True, first_only: bool = False) -> List[str]:
         """ Returns datasets that comply the filter function """
-
+        output = []  
         filtered_datasets = list(filter(lambda ds: function(ds), self.datasets))
-
-        if download:
-            for dataset in filtered_datasets:
-                dataset.download(self.output_directory)
-
-        return filtered_datasets
+        _ = [dataset.download() for dataset in filtered_datasets if download]
+        return filtered_datasets[0] if first_only else filtered_datasets
 
     def _cache_data(self):
         """ Saves cached datasets as CSV file on the disk. """
@@ -121,7 +137,7 @@ class UCIDatabase():
         output_data = []
 
         for item in self.datasets:
-            output_data.append([item.name, item.url, ','.join(item.data_types), ','.join(item.default_tasks), ','.join(item.attribute_types), item.no_instances, item.no_attributes, item.year])
+            output_data.append([item.name, item.url, '$'.join(item.data_types), '$'.join(item.default_tasks), '$'.join(item.attribute_types), item.no_instances, item.no_attributes, item.year])
             
         output_csv = pd.DataFrame(output_data, columns=columns)
         output_csv.to_csv(os.path.join(self.output_directory, self.cache_file), sep=';', index=False)
@@ -141,7 +157,9 @@ class UCIDatabase():
 
             for index, row in cache.iterrows():
                 values = [row[item] for item in columns]
-                preprocessed_values = [item.split(',') if type(item) is str and ',' in item else item for item in values]
+                preprocessed_values = [item.split('$') if type(item) is str and '$' in item else item for item in values]
+                preprocessed_values.append(self.output_directory)
+                preprocessed_values.append(self._predefined_to_df_methods(preprocessed_values[0]))
                 self.datasets.append(UCIDatabaseEntry(*preprocessed_values))
 
             return True
@@ -171,6 +189,7 @@ class UCIDatabase():
 
             # Star gathering values
             values = [remove_non_ascii_characters(link.text), link.get('href')]
+            
             for idx, cell in enumerate(cells[1:], start=1):
 
                 # Remove non-printable characters
@@ -182,4 +201,23 @@ class UCIDatabase():
 
                 values.append(cleaned_text)
 
+            values.append(self.output_directory)
+            values.append(self._predefined_to_df_methods(values[0]))
             self.datasets.append(UCIDatabaseEntry(*values))
+
+    def _predefined_to_df_methods(self, dataset_name) -> None:
+        """ Returns function that converts downloaded dataset to DataFrame. """
+
+        # List of predefined methods
+        predefined_methods = {
+            'Phishing Websites': preprocessing.phishing_websites,
+            'Breast Cancer Wisconsin (Diagnostic)': preprocessing.breast_cancer_wisconsin_diag,
+            'Bank Marketing': preprocessing.bank_marketing,
+            'HIGGS': preprocessing.higgs,
+            'Adult': preprocessing.adult,
+            
+        }
+
+        return predefined_methods[dataset_name] if dataset_name in predefined_methods.keys() else None 
+
+        
