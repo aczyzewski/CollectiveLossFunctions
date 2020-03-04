@@ -20,7 +20,7 @@ from . import preprocessing
 class UCIDatabaseEntry():
     """ Simple structure to mangae single UCI's dataset """
 
-    def __init__(self, name: str, url: str, data_types: List[str], default_tasks: List[str], attribute_types: List[str], no_instances: int, no_attributes: int, year: int, output_directory: str, convert_to_df_method: Callable = None, verbose: bool = True) -> None:
+    def __init__(self, name: str, url: str, data_types: List[str], default_tasks: List[str], attribute_types: List[str], no_instances: int, no_attributes: int, year: int, output_directory: str, convert_to_df_method: Callable = None, verbose: bool = False) -> None:
         """ Initialize default values of the class.
         
             Args:
@@ -70,7 +70,8 @@ class UCIDatabaseEntry():
         
         # Skip if dataset is on the disk        
         if os.path.isdir(self.local_path) and not overwrite:
-            print('The dataset exists on the disk.')
+            if self.verbose:
+                print('The dataset exists on the disk.')
             return
 
         os.makedirs(self.local_path, exist_ok=True)

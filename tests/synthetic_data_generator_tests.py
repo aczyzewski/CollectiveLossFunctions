@@ -1,5 +1,4 @@
 import unittest
-
 from src.data.generator import SyntheticDataGenerator
 
 class TestSyntheticDataGenerator(unittest.TestCase):
