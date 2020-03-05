@@ -34,9 +34,10 @@ def bank_marketing(location: str) -> pd.DataFrame:
     
     data = joinpath(location, 'data')
     files = ['bank.zip', 'bank-additional.zip']
-    for file in files:
-        with zipfile.ZipFile(joinpath(location, file), 'r') as zipref:
-            zipref.extractall(data)
+    if not os.path.isfile(joinpath(data, 'bank-additional', 'bank-additional.csv')):
+        for file in files:
+            with zipfile.ZipFile(joinpath(location, file), 'r') as zipref:
+                zipref.extractall(data)
     return pd.read_csv(joinpath(data, 'bank-additional', 'bank-additional.csv'), sep=';')
 
 def higgs(location: str) -> pd.DataFrame:
@@ -66,9 +67,20 @@ def adult(location: str) -> pd.DataFrame:
     test_data.dropna(inplace=True)
     test_data.replace(r'^\s+\?$', np.nan, regex=True, inplace=True)
     
-    data = pd.read_csv(joinpath(location, 'adult.data'), names=columns)
-    data.replace(r'^\s+\?$', np.nan, regex=True, inplace=True)
+    train_data = pd.read_csv(joinpath(location, 'adult.data'), names=columns)
+    train_data.replace(r'^\s+\?$', np.nan, regex=True, inplace=True)
     
-    return pd.concat((data, test_data))
+    return pd.concat((train_data, test_data))
 
+def dota2results(location: str) -> pd.DataFrame:
+    """ Dota2 Games Results """
     
+    columns = ['taget', 'cluster_id', 'game_mode', 'game_type'] + [f'hero_{idx}' for idx in range(113)]
+    if not os.path.isfile(joinpath(location, 'data', 'dota2Test.csv')):
+        with zipfile.ZipFile(joinpath(location, 'dota2Dataset.zip'), 'r') as zip_ref:
+            zip_ref.extractall(joinpath(location, 'data'))
+            
+    
+    test_data = pd.read_csv(joinpath(location, 'data', 'dota2Test.csv'), names=columns)
+    train_data = pd.read_csv(joinpath(location, 'data', 'dota2Train.csv'), names=columns)
+    return pd.concat((train_data, test_data))

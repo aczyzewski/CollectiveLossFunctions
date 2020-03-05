@@ -216,6 +216,7 @@ class UCIDatabase():
             'Bank Marketing': preprocessing.bank_marketing,
             'HIGGS': preprocessing.higgs,
             'Adult': preprocessing.adult,
+            'Dota2 Games Results': preprocessing.dota2results
             
         }
 

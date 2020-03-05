@@ -2,6 +2,7 @@
 datasets/*
 !datasets/datasets.csv
 tensorboard/*
+temp_*
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
