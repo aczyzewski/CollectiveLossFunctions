@@ -70,13 +70,13 @@ class CustomNeuralNetwork(nn.Module):
             for layer in self.__hidden_layers:
                 init_method(layer.weight)
 
-        # Create a network
+        # Create the network
         self.network = nn.Sequential(*self.list_of_network_blocks)
 
     def forward(self, x: Tensor) -> Tensor:
         return self.network(x)
 
-
+# Backward compatibilty
 class ExampleNeuralNetwork(CustomNeuralNetwork):
     def __init__(self):
         super().__init__([1, 12, 1], hidden_activations="sigmoid")

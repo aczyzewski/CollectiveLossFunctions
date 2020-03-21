@@ -3,13 +3,24 @@ import torch
 from torch import Tensor, FloatTensor
 from typing import Callable
 
+# Example
 def MSE() -> Callable[[Tensor, Tensor], Tensor]:
     def mse(prediction: Tensor, target: Tensor) -> float:
         return ((target - prediction) ** 2).mean()
     return mse
 
 def KNNHingeLoss(train_dataset: Tensor, train_predictions: Tensor, k: int = 3, alpha = 0.3) -> Callable[[Tensor, Tensor], Tensor]:
-    
+    """ 
+        Implementation of KNN Hinge Loss
+
+        Note: 
+            The variable `train_dataset` should contain train examples as well as validation examples.
+            Otherwise, there is no way to calculate loss on validation dataset.
+            We can also create an different object of this loss only for validation purposes.
+
+        TODO: Resolve the method of validation.
+
+     """
     # Create an index (L2)
     num_columns, num_attributes = train_dataset.shape
     index = faiss.IndexFlatL2(num_attributes)
@@ -17,6 +28,8 @@ def KNNHingeLoss(train_dataset: Tensor, train_predictions: Tensor, k: int = 3, a
     
     def knn_hingle_loss(predictions: Tensor, target: Tensor, input_data: Tensor) -> Tensor:
         
+        assert predictions.shape == target.shape, 'Invalid target shape!'
+
         # Find k most similar vectors in the training dataset
         scores, indexes = index.search(input_data.numpy(), k + 1)
         
@@ -25,12 +38,16 @@ def KNNHingeLoss(train_dataset: Tensor, train_predictions: Tensor, k: int = 3, a
         
         # Get and return most frequent class
         knn_classes, _ = torch.mode(knn, dim=1)
-        
+        knn_classes = knn_classes.reshape(-1, 1)
+
         # Calculate loss value
+
         loss = torch.max(torch.zeros_like(knn_classes), 1 - target * predictions 
                          + alpha * (torch.abs(target - knn_classes) * torch.abs(target - predictions))
                          + torch.abs(target - predictions) * torch.abs(knn_classes - predictions))
-                         
+                        
+        assert loss.shape == predictions.shape, 'Invalid loss shape!'
         return loss.mean()
     
     return knn_hingle_loss
+
