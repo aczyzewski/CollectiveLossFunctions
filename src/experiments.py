@@ -1,19 +1,20 @@
+import os
+from enum import Enum
+from datetime import datetime
+from collections import defaultdict
+from typing import Callable, List
+from typing import Any
+
 import wandb
 import torch
 import numpy as np
-
-from enum import Enum
 from tqdm import tqdm
-from collections import defaultdict
-from typing import Callable, List
-from datetime import datetime
 
 from torch import Tensor
 from torch.nn import Module
 from torch.optim import Optimizer
 from torch.utils.data import Dataset, DataLoader
 
-from typing import Any
 
 class TrainingCallbackType(Enum):
 	ON_EPOCH_START = 0,
@@ -21,6 +22,7 @@ class TrainingCallbackType(Enum):
 
 	def __eq__(self, value):
 		return self.value == value
+
 
 def training_step(model, criterion, optimizer, inputs, labels, knn_loss: bool = False) -> float:
 	""" Performs single train step """
@@ -37,6 +39,7 @@ def training_step(model, criterion, optimizer, inputs, labels, knn_loss: bool = 
 	optimizer.step()
 
 	return loss.item()
+
 
 def validation_step(model, criterion, inputs, labels, knn_loss: bool = False) -> float:
 	""" Forward-propagation without calculating gradients """

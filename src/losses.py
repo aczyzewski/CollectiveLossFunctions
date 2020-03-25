@@ -1,15 +1,15 @@
-import faiss
 import torch
 from torch import Tensor, FloatTensor
 from typing import Callable
 
-# Example
+
 def MSE() -> Callable[[Tensor, Tensor], Tensor]:
     def mse(prediction: Tensor, target: Tensor) -> float:
         return ((target - prediction) ** 2).mean()
     return mse
 
-def KNNHingeLoss(train_dataset: Tensor, train_predictions: Tensor, k: int = 3, alpha = 0.3) -> Callable[[Tensor, Tensor], Tensor]:
+
+def KNNHingeLoss(train_dataset: Tensor, train_predictions: Tensor, k: int = 3, alpha: float = 0.3) -> Callable[[Tensor, Tensor], Tensor]:
     """ 
         Implementation of KNN Hinge Loss
 
@@ -21,6 +21,8 @@ def KNNHingeLoss(train_dataset: Tensor, train_predictions: Tensor, k: int = 3, a
         TODO: Resolve the method of validation.
 
      """
+    import faiss
+
     # Create an index (L2)
     num_columns, num_attributes = train_dataset.shape
     index = faiss.IndexFlatL2(num_attributes)
@@ -64,19 +66,20 @@ def KNNMSELoss(train_dataset: Tensor, train_predictions: Tensor, k: int = 3) -> 
         TODO: Resolve the method of validation.
 
      """
+    import faiss
 
     def entropy(vector: Tensor) -> Tensor:
         """ Calculates Entropy using `torch` components. Works only with 1-D vectors. """
         return -1. * torch.sum(torch.Tensor([probability * torch.log2(probability) for probability in vector]))
 
 
-    def calculate_entropy_of_tensor(values: Tensor, base_probability: float) -> Tensor:
+    def calculate_entropy_of_tensor(values: Tensor) -> Tensor:
         """ Calculates entropy independently for each vector in a tensor
             Returns results as 1-D tensor """
         output_vector = []
-        for single_example in values:
-            _, counts = torch.unique(single_example, return_counts=True)
-            probablity_vector = counts * base_probability
+        for vector in values:
+            _, counts = torch.unique(vector, return_counts=True)
+            probablity_vector = counts * 1. / k
             output_vector.append(entropy(probablity_vector))
 
         return torch.Tensor(output_vector).reshape(-1, 1)
@@ -96,8 +99,7 @@ def KNNMSELoss(train_dataset: Tensor, train_predictions: Tensor, k: int = 3) -> 
         knn = train_predictions[[indexes]][:, 1:]
         
         # Calculate entropy
-        base_probability = 1. / k
-        entropies = calculate_entropy_of_tensor(knn, base_probability)
+        entropies = calculate_entropy_of_tensor(knn)
         assert entropies.shape == target.shape, 'Invalid entropies shape!'
         
         entropies = entropies.reshape(-1, 1)
@@ -107,4 +109,3 @@ def KNNMSELoss(train_dataset: Tensor, train_predictions: Tensor, k: int = 3) -> 
         return loss.mean()
 
     return knn_mse_loss
-

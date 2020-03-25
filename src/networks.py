@@ -1,10 +1,11 @@
-from torch import nn, Tensor
 from typing import List, Any
+from torch import nn, Tensor
+
 
 class CustomNeuralNetwork(nn.Module):
     """ TODO: Doc """
     
-    def __init__(self, layers: List[int], hidden_activations: Any = "none", output_activations: Any = "none", initialization: str = "default") -> None:
+    def __init__(self, layers: List[int], hidden_activations: Any = "none", output_activations: Any = "none", initialization: str = "he") -> None:
         super(CustomNeuralNetwork, self).__init__()
     
         self.str_to_activations_converter = {
@@ -45,7 +46,10 @@ class CustomNeuralNetwork(nn.Module):
         }
 
         # Get lists of all elements
-        self.__hidden_layers = [nn.Linear(input_dim, output_dim) for input_dim, output_dim in zip(layers[:-1], layers[1:])]
+        self.__hidden_layers = [
+            nn.Linear(input_dim, output_dim) 
+            for input_dim, output_dim in zip(layers[:-1], layers[1:])
+        ]
         self.__hidden_activations = self.str_to_activations_converter[hidden_activations]
         self.__output_activations = self.str_to_activations_converter[output_activations]
 
@@ -65,10 +69,9 @@ class CustomNeuralNetwork(nn.Module):
             self.list_of_network_blocks.append(self.__output_activations())
 
         # Initalize layers
-        if initialization != "default":
-            init_method = self.str_to_initialiser_converter[initialization]
-            for layer in self.__hidden_layers:
-                init_method(layer.weight)
+        init_method = self.str_to_initialiser_converter[initialization]
+        for layer in self.__hidden_layers:
+            init_method(layer.weight)
 
         # Create the network
         self.network = nn.Sequential(*self.list_of_network_blocks)
@@ -76,7 +79,7 @@ class CustomNeuralNetwork(nn.Module):
     def forward(self, x: Tensor) -> Tensor:
         return self.network(x)
 
-# Backward compatibilty
+
 class ExampleNeuralNetwork(CustomNeuralNetwork):
     def __init__(self):
         super().__init__([1, 12, 1], hidden_activations="sigmoid")
