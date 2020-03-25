@@ -67,7 +67,10 @@ def run_training_loop(
 	# Logs
 	tensorboard_path: str = '../tensorboard',
 	use_wandb: bool = True,
-	wandb_project_name: str = 'collective_loss_functions'
+	wandb_project_name: str = 'collective_loss_functions',
+
+	# Misc
+	tqdm_description: str = None
 	
 ) -> (Module, List[float], List[float]):
 	pass
@@ -81,7 +84,8 @@ def run_training_loop(
 		wandb.watch(model)
 
 	# Mail loop
-	for epoch in tqdm(range(epochs)): 
+	epochs_bar = tqdm(range(epochs), desc=tqdm_description)
+	for epoch in epochs_bar: 
 
 		training_loss, validation_loss = [], []
 
@@ -103,6 +107,7 @@ def run_training_loop(
 				validation_loss.append(loss)
 			mean_validation_loss = np.mean(validation_loss)
 			validation_loss_history.append(mean_validation_loss)
+			epochs_bar.set_postfix({'val loss': round(mean_validation_loss, 3)})
 
 		# W&B
 		if use_wandb:
