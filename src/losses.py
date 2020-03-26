@@ -4,17 +4,23 @@ from typing import Callable
 
 
 def MSE() -> Callable[[Tensor, Tensor], Tensor]:
-    def mse(prediction: Tensor, target: Tensor) -> float:
-        return ((target - prediction) ** 2).mean()
+    def mse(input: Tensor, target: Tensor) -> float:
+        return ((target - input) ** 2).mean()
     return mse
 
 
-def KNNHingeLoss(train_dataset: Tensor, train_predictions: Tensor, k: int = 3, alpha: float = 0.3) -> Callable[[Tensor, Tensor], Tensor]:
+def HingeLoss() -> Callable[[Tensor, Tensor], Tensor]:
+    def hingeloss(input: Tensor, target: Tensor) -> float:
+        return torch.sum(torch.max(torch.Tensor([0]), 0.5 - input * target) ** 2)
+    return hingeloss
+
+
+def KNNHingeLoss(train_x: Tensor, train_y: Tensor, k: int = 3, alpha: float = 0.3) -> Callable[[Tensor, Tensor], Tensor]:
     """ 
         Implementation of KNN Hinge Loss
 
         Note: 
-            The variable `train_dataset` should contain train examples as well as validation examples.
+            The variable `train_x` should contain train examples as well as validation examples.
             Otherwise, there is no way to calculate loss on validation dataset.
             We can also create an different object of this loss only for validation purposes.
 
@@ -24,9 +30,9 @@ def KNNHingeLoss(train_dataset: Tensor, train_predictions: Tensor, k: int = 3, a
     import faiss
 
     # Create an index (L2)
-    num_columns, num_attributes = train_dataset.shape
+    num_columns, num_attributes = train_x.shape
     index = faiss.IndexFlatL2(num_attributes)
-    index.add(train_dataset.numpy())
+    index.add(train_x.numpy())
     
     def knn_hingle_loss(predictions: Tensor, target: Tensor, input_data: Tensor) -> Tensor:
         
@@ -36,7 +42,7 @@ def KNNHingeLoss(train_dataset: Tensor, train_predictions: Tensor, k: int = 3, a
         scores, indexes = index.search(input_data.numpy(), k + 1)
         
         # Get classes of the most similiar vectors
-        knn = train_predictions[[indexes]][:, 1:]
+        knn = train_y[[indexes]][:, 1:]
         
         # Get and return most frequent class
         knn_classes, _ = torch.mode(knn, dim=1)
@@ -54,12 +60,12 @@ def KNNHingeLoss(train_dataset: Tensor, train_predictions: Tensor, k: int = 3, a
     return knn_hingle_loss
 
 
-def KNNMSELoss(train_dataset: Tensor, train_predictions: Tensor, k: int = 3) -> Callable[[Tensor, Tensor], Tensor]:
+def KNNMSELoss(train_x: Tensor, train_y: Tensor, k: int = 3) -> Callable[[Tensor, Tensor], Tensor]:
     """ 
         Implementation of KNN MSE Loss.
 
         Note: 
-            The variable `train_dataset` should contain train examples as well as validation examples.
+            The variable `train_x` should contain train examples as well as validation examples.
             Otherwise, there is no way to calculate loss on validation dataset.
             We can also create an different object of this loss only for validation purposes.
 
@@ -72,7 +78,6 @@ def KNNMSELoss(train_dataset: Tensor, train_predictions: Tensor, k: int = 3) -> 
         """ Calculates Entropy using `torch` components. Works only with 1-D vectors. """
         return -1. * torch.sum(torch.Tensor([probability * torch.log2(probability) for probability in vector]))
 
-
     def calculate_entropy_of_tensor(values: Tensor) -> Tensor:
         """ Calculates entropy independently for each vector in a tensor
             Returns results as 1-D tensor """
@@ -84,9 +89,9 @@ def KNNMSELoss(train_dataset: Tensor, train_predictions: Tensor, k: int = 3) -> 
 
         return torch.Tensor(output_vector).reshape(-1, 1)
 
-    num_columns, num_attributes = train_dataset.shape
+    num_columns, num_attributes = train_x.shape
     index = faiss.IndexFlatL2(num_attributes)
-    index.add(train_dataset.numpy())
+    index.add(train_x.numpy())
 
     def knn_mse_loss(prediction: Tensor, target: Tensor, input_data: Tensor) -> Tensor:
         
@@ -96,7 +101,7 @@ def KNNMSELoss(train_dataset: Tensor, train_predictions: Tensor, k: int = 3) -> 
         scores, indexes = index.search(input_data.numpy(), k + 1)
 
         # Get classes of the most similiar vectors
-        knn = train_predictions[[indexes]][:, 1:]
+        knn = train_y[[indexes]][:, 1:]
         
         # Calculate entropy
         entropies = calculate_entropy_of_tensor(knn)
