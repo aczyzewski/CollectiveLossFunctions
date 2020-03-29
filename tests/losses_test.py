@@ -11,6 +11,11 @@ class TestLosses(unittest.TestCase):
         sample = torch.Tensor(np.array([[0, 0, 0, 0, 0]]))
         self.assertEqual(entropy(sample), 0.)
 
+    def test_mixed_entropy(self):
+        sample = torch.Tensor(np.array([[0, 0, 0, 0, 1, 1]]))
+        expected_result = -1 * ((1/3) * np.log2(1/3) + (2/3) * np.log2(2/3))
+        self.assertEqual(entropy(sample), expected_result)
+
     def test_max_entropy(self):
         sample = torch.Tensor(np.array([[0, 0, 0, 1, 1, 1]]))
         self.assertEqual(entropy(sample), 1.)

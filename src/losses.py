@@ -25,7 +25,7 @@ def entropy(values: Tensor) -> Tensor:
 
     for vector in values:
         _, counts = torch.unique(vector, return_counts=True)
-        probablity_vector = counts * 1. / len(vector)
+        probablity_vector = counts * 1. / torch.sum(counts)
         output_vector.append(_entropy(probablity_vector))
 
     return torch.Tensor(output_vector).reshape(-1, 1)
