@@ -15,6 +15,22 @@ def HingeLoss() -> Callable[[Tensor, Tensor], Tensor]:
     return hingeloss
 
 
+def entropy(values: Tensor) -> Tensor:
+    """ Calculates entropy independently for each vector in a tensor
+        Returns results as 1-D tensor """
+    _entropy = lambda vector: -1. * torch.sum(torch.Tensor(
+        [probability * torch.log2(probability) for probability in vector]))
+
+    output_vector = []
+
+    for vector in values:
+        _, counts = torch.unique(vector, return_counts=True)
+        probablity_vector = counts * 1. / torch.sum(counts)
+        output_vector.append(_entropy(probablity_vector))
+
+    return torch.Tensor(output_vector).reshape(-1, 1)
+
+
 def KNNHingeLoss(train_x: Tensor, train_y: Tensor, k: int = 3, alpha: float = 0.3) -> Callable[[Tensor, Tensor], Tensor]:
     """ 
         Implementation of KNN Hinge Loss
@@ -74,21 +90,6 @@ def KNNMSELoss(train_x: Tensor, train_y: Tensor, k: int = 3) -> Callable[[Tensor
      """
     import faiss
 
-    def entropy(vector: Tensor) -> Tensor:
-        """ Calculates Entropy using `torch` components. Works only with 1-D vectors. """
-        return -1. * torch.sum(torch.Tensor([probability * torch.log2(probability) for probability in vector]))
-
-    def calculate_entropy_of_tensor(values: Tensor) -> Tensor:
-        """ Calculates entropy independently for each vector in a tensor
-            Returns results as 1-D tensor """
-        output_vector = []
-        for vector in values:
-            _, counts = torch.unique(vector, return_counts=True)
-            probablity_vector = counts * 1. / k
-            output_vector.append(entropy(probablity_vector))
-
-        return torch.Tensor(output_vector).reshape(-1, 1)
-
     num_columns, num_attributes = train_x.shape
     index = faiss.IndexFlatL2(num_attributes)
     index.add(train_x.numpy())
@@ -104,11 +105,11 @@ def KNNMSELoss(train_x: Tensor, train_y: Tensor, k: int = 3) -> Callable[[Tensor
         knn = train_y[[indexes]][:, 1:]
         
         # Calculate entropy
-        entropies = calculate_entropy_of_tensor(knn)
+        entropies = entropy(knn)
         assert entropies.shape == target.shape, 'Invalid entropies shape!'
         
         entropies = entropies.reshape(-1, 1)
-        loss = torch.exp(entropies) * ((target - prediction) ** 2)
+        loss = torch.exp(-1 * entropies) * ((target - prediction) ** 2)
 
         assert loss.shape == prediction.shape, 'Invalid loss shape!'
         return loss.mean()
