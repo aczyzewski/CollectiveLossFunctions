@@ -1,6 +1,7 @@
 from typing import List, Any
 from torch import nn, Tensor
 
+from .mish import Mish
 
 class CustomNeuralNetwork(nn.Module):
     """ TODO: Doc """
@@ -28,6 +29,7 @@ class CustomNeuralNetwork(nn.Module):
             "tanhshrink": nn.Tanhshrink, 
             "softmin": nn.Softmin, 
             "softmax": nn.Softmax,
+            "mish": Mish,
             "none": None
         }
 
