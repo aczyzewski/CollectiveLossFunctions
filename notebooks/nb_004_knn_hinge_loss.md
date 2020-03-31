@@ -98,13 +98,16 @@ for k in [1, 3, 5]:
 
 ```python
 from tqdm import tqdm_notebook as tqdm
+from src.mish import Mish
 
 # Training loop
 output_data = []
 
+activation_function = Mish()
+
 for lossname, lossfunc, knn_loss in losses:
     
-    model = CustomNeuralNetwork(layers=[30, 16, 4, 1], hidden_activations="sigmoid", output_activations="sigmoid")
+    model = CustomNeuralNetwork(layers=[30, 16, 4, 1], hidden_activations="mish", output_activations="mish")
     optimizer = SGD(model.parameters(), lr=0.01)
     criterion = lossfunc
     

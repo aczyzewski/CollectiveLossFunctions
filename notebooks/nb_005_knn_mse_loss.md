@@ -95,7 +95,7 @@ output_data = []
 
 for lossname, lossfunc, knn_loss in losses:
     
-    model = CustomNeuralNetwork(layers=[13, 16, 4, 1], hidden_activations="relu")
+    model = CustomNeuralNetwork(layers=[13, 16, 4, 1], hidden_activations="mish")
     optimizer = SGD(model.parameters(), lr=0.001)
     criterion = lossfunc
     
