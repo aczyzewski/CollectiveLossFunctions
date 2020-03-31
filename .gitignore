@@ -4,6 +4,10 @@ datasets/*
 !datasets/datasets.csv
 tensorboard/*
 temp_*
+wandb
+
+# Jupyter Notebooks
+*.ipynb
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
