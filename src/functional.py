@@ -47,3 +47,23 @@ def theil(values: Tensor) -> Tensor:
         output_vector.append(theil_index)
 
     return torch.Tensor(output_vector).reshape(-1,1)
+
+
+def gini(values: Tensor) -> Tensor:
+    """ Computes the value of the Gini index of a distribution
+        Returns results as a 1-D tensor """
+
+    output_vector = []
+
+    for vector in values:
+
+        if torch.mean(vector) == 0:
+            gini_index = 0
+        else:
+            mean_abs_difference = torch.mean(torch.abs(torch.Tensor(np.subtract.outer(vector, vector))))
+            relative_mean_abs_difference = mean_abs_difference / torch.mean(vector)
+            gini_index = 0.5 * relative_mean_abs_difference
+
+        output_vector.append(gini_index)
+
+    return torch.Tensor(output_vector).reshape(-1,1)

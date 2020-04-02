@@ -2,7 +2,7 @@ import unittest
 import numpy as np
 import torch
 
-from src.functional import entropy, theil
+from src.functional import entropy, theil, gini
 
 
 class TestFunctionals(unittest.TestCase):
@@ -51,6 +51,25 @@ class TestFunctionals(unittest.TestCase):
         self.assertEqual(theil(sample), (1/2) * ((5/3) * np.log(5/3) + (1/3) * np.log(1/3)))
 
     def test_theil_multiple_vectors(self):
+        sample = torch.Tensor(np.array([[0, 0, 0, 0], [1, 1, 1, 1]]))
+        self.assertTrue(torch.all(torch.eq(theil(sample), torch.Tensor([0., 0.]))))
+
+    def test_zeros_gini(self):
+        sample = torch.Tensor(np.array([[0, 0, 0, 0, 0]]))
+        self.assertEqual(gini(sample), 0.0)
+
+    def test_ones_gini(self):
+        sample = torch.Tensor(np.array([[1, 1, 1, 1, 1, 1]]))
+        self.assertEqual(gini(sample), 0.0)
+
+    def test_random_gini(self):
+        num_classes = 2
+        sample_size = 10
+        sample = torch.Tensor([np.random.choice(np.arange(num_classes), size=sample_size)])
+        self.assertGreaterEqual(gini(sample), 0.)
+        self.assertLessEqual(gini(sample), 0.5)
+
+    def test_gini_multiple_vectors(self):
         sample = torch.Tensor(np.array([[0, 0, 0, 0], [1, 1, 1, 1]]))
         self.assertTrue(torch.all(torch.eq(theil(sample), torch.Tensor([0., 0.]))))
 
