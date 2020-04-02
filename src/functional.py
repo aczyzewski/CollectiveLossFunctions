@@ -1,5 +1,6 @@
 import torch
 import torch.nn.functional as F
+import numpy as np
 
 from torch import Tensor
 
@@ -28,3 +29,21 @@ def entropy(values: Tensor) -> Tensor:
     return torch.Tensor(output_vector).reshape(-1, 1)
 
 
+def theil(values: Tensor) -> Tensor:
+    """ Computes the Theil index of the inequality of distribution (https://en.wikipedia.org/wiki/Theil_index)
+        Returns the value of the Theil index of the distribution """
+
+    output_vector = []
+
+    for vector in values:
+        _, counts = torch.unique(vector, return_counts=True)
+        mi = torch.mean(counts.float())
+
+        if mi == 0:
+            theil_index = 0
+        else:
+            theil_index = (1 / len(counts)) * torch.sum((counts / mi) * torch.log(counts / mi))
+
+        output_vector.append(theil_index)
+
+    return torch.Tensor(output_vector).reshape(-1,1)
