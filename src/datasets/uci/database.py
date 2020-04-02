@@ -20,7 +20,10 @@ from . import preprocessing
 class UCIDatabaseEntry():
     """ Simple structure to mangae single UCI's dataset """
 
-    def __init__(self, name: str, url: str, data_types: List[str], default_tasks: List[str], attribute_types: List[str], no_instances: int, no_attributes: int, year: int, output_directory: str, load_method: Callable = None, verbose: bool = False) -> None:
+    def __init__(self, name: str, url: str, data_types: List[str], default_tasks: List[str], 
+                attribute_types: List[str], no_instances: int, no_attributes: int, 
+                year: int, output_directory: str, load_method: Callable = None, 
+                verbose: bool = False) -> None:
         """ Initialize default values of the class.
         
             Args:
@@ -80,7 +83,6 @@ class UCIDatabaseEntry():
         url_to_list_of_files = self._get_download_url()
         file_list_as_html = requests.get(url_to_list_of_files).content
         files = etree.HTML(file_list_as_html).xpath(".//*[self::a]")
-        print(files)
 
         # Unnecessary URLs
         url_blacklist = set(['Parent Directory', 'Index', 'Name', 'Last modified', 'Size', 'Description'])
@@ -112,7 +114,9 @@ class UCIDatabaseEntry():
 class UCIDatabase():
     """ Wrapper for UCI Datasets (archive.ics.uci.edu) """
 
-    def __init__(self, url: str = "https://archive.ics.uci.edu/ml/datasets.php", output_directory: str = "datasets", cache_file: str = 'datasets.csv', load_from_cache: bool = True, verbose: bool = False) -> None:
+    def __init__(self, url: str = "https://archive.ics.uci.edu/ml/datasets.php", 
+                output_directory: str = "datasets", cache_file: str = 'datasets.csv', 
+                load_from_cache: bool = True, verbose: bool = False) -> None:
 
         self.output_directory = output_directory
         os.makedirs(self.output_directory, exist_ok=True)
