@@ -1,5 +1,6 @@
 from typing import Tuple, List, Dict, Any, Callable
 
+
 def iterfile(filename: str, ignore_empty_lines: bool = True, filters: List[Callable[[str], bool]] = []) -> Any:
     """ Yields non-empty rows of a file """
     

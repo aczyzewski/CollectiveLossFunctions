@@ -20,7 +20,7 @@ from . import preprocessing
 class UCIDatabaseEntry():
     """ Simple structure to mangae single UCI's dataset """
 
-    def __init__(self, name: str, url: str, data_types: List[str], default_tasks: List[str], attribute_types: List[str], no_instances: int, no_attributes: int, year: int, output_directory: str, convert_to_df_method: Callable = None, verbose: bool = False) -> None:
+    def __init__(self, name: str, url: str, data_types: List[str], default_tasks: List[str], attribute_types: List[str], no_instances: int, no_attributes: int, year: int, output_directory: str, load_method: Callable = None, verbose: bool = False) -> None:
         """ Initialize default values of the class.
         
             Args:
@@ -55,7 +55,7 @@ class UCIDatabaseEntry():
         def raise_not_implemented_error(*args):
             raise NotImplementedError("The convertion method to DataFrame is not implemented!")
 
-        self.convert_to_df_method = raise_not_implemented_error if convert_to_df_method is None else convert_to_df_method
+        self.load_method = raise_not_implemented_error if load_method is None else load_method
 
     def download(self, overwrite: bool = False) -> None:
         """ Saves files from the dataset to disk 
@@ -80,7 +80,8 @@ class UCIDatabaseEntry():
         url_to_list_of_files = self._get_download_url()
         file_list_as_html = requests.get(url_to_list_of_files).content
         files = etree.HTML(file_list_as_html).xpath(".//*[self::a]")
-        
+        print(files)
+
         # Unnecessary URLs
         url_blacklist = set(['Parent Directory', 'Index', 'Name', 'Last modified', 'Size', 'Description'])
 
@@ -90,11 +91,11 @@ class UCIDatabaseEntry():
                 downloaded_file = requests.get(urllib.parse.urljoin(url_to_list_of_files, single_file.get('href')))
                 open(os.path.join(self.local_path, single_file.text.strip()), 'wb').write(downloaded_file.content)
 
-    def to_df(self) -> pd.DataFrame:
+    def load(self) -> pd.DataFrame:
         """ Applies convertion method on downloaded files to create DataFrame """
         if self.local_path is None:
             raise Exception("Download the dataset first!")
-        return self.convert_to_df_method(self.local_path)
+        return self.load_method(self.local_path)
 
     def _get_download_url(self) -> str:
         """ Retrieves URL to dataset's files """
@@ -107,6 +108,7 @@ class UCIDatabaseEntry():
         datafolder_location_path = dataset_page.xpath(datafolder_location_xpath)[0].get('href')
         return urllib.parse.urljoin(self.base_url, datafolder_location_path.replace('../', ''))
             
+
 class UCIDatabase():
     """ Wrapper for UCI Datasets (archive.ics.uci.edu) """
 
@@ -160,7 +162,7 @@ class UCIDatabase():
                 values = [row[item] for item in columns]
                 preprocessed_values = [item.split('$') if type(item) is str and '$' in item else item for item in values]
                 preprocessed_values.append(self.output_directory)
-                preprocessed_values.append(self._predefined_to_df_methods(preprocessed_values[0]))
+                preprocessed_values.append(self._predefined_load_methods(preprocessed_values[0]))
                 self.datasets.append(UCIDatabaseEntry(*preprocessed_values))
 
             return True
@@ -203,20 +205,19 @@ class UCIDatabase():
                 values.append(cleaned_text)
 
             values.append(self.output_directory)
-            values.append(self._predefined_to_df_methods(values[0]))
+            values.append(self._predefined_load_methods(values[0]))
             self.datasets.append(UCIDatabaseEntry(*values))
 
-    def _predefined_to_df_methods(self, dataset_name) -> None:
+    def _predefined_load_methods(self, dataset_name) -> None:
         """ Returns function that converts downloaded dataset to DataFrame. """
 
         # List of predefined methods
         predefined_methods = {
-            'Phishing Websites': preprocessing.phishing_websites,
-            'Breast Cancer Wisconsin (Diagnostic)': preprocessing.breast_cancer_wisconsin_diag,
-            'Bank Marketing': preprocessing.bank_marketing,
-            'HIGGS': preprocessing.higgs,
-            'Adult': preprocessing.adult,
-            'Dota2 Games Results': preprocessing.dota2results
+            'Phishing Websites': preprocessing._phishing_websites,
+            'Breast Cancer Wisconsin (Diagnostic)': preprocessing._breast_cancer_wisconsin_diag,
+            'Bank Marketing': preprocessing._bank_marketing,
+            'Adult': preprocessing._adult,
+            'Skin Segmentation': preprocessing._skin_segmentation
             
         }
 

@@ -26,7 +26,7 @@ sys.path.insert(0, '..')
 ```
 
 ```python
-from src.data.uci.database import UCIDatabase
+from src.datasets import UCIDatabase
 ```
 
 ```python
@@ -34,7 +34,7 @@ bin_classifiation_datasets = [
     'Phishing Websites',
     'Breast Cancer Wisconsin (Diagnostic)',
     'Bank Marketing',
-    'Dota2 Games Results',
+    'Skin Segmentation',
     'Adult'
 ]
 ```
@@ -46,8 +46,8 @@ db = UCIDatabase(output_directory='../datasets', verbose=True)
 ```python
 for dataset_name in bin_classifiation_datasets:
     dataset = db.get(lambda x: x.name == dataset_name, first_only=True)
-    data = dataset.to_df()
-    print(f'Dataset: {dataset.name} | Shape: {data.shape}')
+    x, y = dataset.load()
+    print(f'Dataset: {dataset.name} | Shape: {x.shape}')
 ```
 
 ```python
