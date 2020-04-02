@@ -3,6 +3,7 @@ import torch.nn.functional as F
 import numpy as np
 
 from torch import Tensor
+from functools import reduce
 
 def mish(input):
     '''
@@ -65,5 +66,24 @@ def gini(values: Tensor) -> Tensor:
             gini_index = 0.5 * relative_mean_abs_difference
 
         output_vector.append(gini_index)
+
+    return torch.Tensor(output_vector).reshape(-1,1)
+
+
+def atkinson(values: Tensor) -> Tensor:
+    """ Computes the value of the Atkinson index: https://en.wikipedia.org/wiki/Atkinson_index
+        Assumes that the epsilon=1
+        Return results as a 1-D tensor """
+
+    output_vector = []
+
+    for vector in values:
+        _, counts = torch.unique(vector, return_counts=True)
+        mi = torch.mean(counts.float())
+        N = len(counts)
+
+        atkinson_index = 1 - (1/mi) * (reduce(lambda x, y: x * y, counts) ** (1/N))
+
+        output_vector.append(atkinson_index)
 
     return torch.Tensor(output_vector).reshape(-1,1)
