@@ -259,8 +259,8 @@ class UCIDatabase():
             'Breast Cancer Wisconsin (Diagnostic)': preprocessing._breast_cancer_wisconsin_diag,
             'Bank Marketing': preprocessing._bank_marketing,
             'Adult': preprocessing._adult,
-            'Skin Segmentation': preprocessing._skin_segmentation
-
+            'Skin Segmentation': preprocessing._skin_segmentation,
+            'Online News Popularity': preprocessing._online_news_popularity
         }
 
         return predefined_methods[dataset_name] if dataset_name in predefined_methods.keys() else None 

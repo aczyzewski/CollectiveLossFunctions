@@ -8,7 +8,8 @@ import pandas as pd
 import numpy as np
 
 from .utils import load_arff_file, iterfile
-from .decorators import binary_dataset_loader
+from .decorators import binary_dataset_loader, regression_dataset_loader
+
 
 @binary_dataset_loader
 def _phishing_websites(location: str) -> Tuple[pd.DataFrame, pd.DataFrame]:
@@ -108,6 +109,7 @@ def _adult(location: str) -> Tuple[pd.DataFrame, pd.DataFrame]:
 
     return x, y
 
+
 @binary_dataset_loader
 def _skin_segmentation(location: str) -> Tuple[pd.DataFrame, pd.DataFrame]:
     """ Skin Segmentation """
@@ -121,3 +123,19 @@ def _skin_segmentation(location: str) -> Tuple[pd.DataFrame, pd.DataFrame]:
     y = y - 1
 
     return x, y
+
+
+@regression_dataset_loader
+def _online_news_popularity(location: str):
+    """ Online News Popularity """ 
+
+    # Unzip the files
+    unzip_directory = joinpath(location, 'data')
+    with zipfile.ZipFile(joinpath(location, 'OnlineNewsPopularity.zip'), 'r') as zipref:
+        zipref.extractall(unzip_directory)
+        
+    # Read and split the data into x, y
+    data = pd.read_csv(joinpath(unzip_directory, 'OnlineNewsPopularity', 'OnlineNewsPopularity.csv'))
+    x, y = data.iloc[:,1: -1], data.iloc[:, -1]
+    
+    return x, y 
