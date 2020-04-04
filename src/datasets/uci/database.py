@@ -81,7 +81,7 @@ class UCIDatabaseEntry():
         
         # Retrieve list of files of the dataset
         url_to_list_of_files = self._get_download_url()
-        file_list_as_html = requests.get(url_to_list_of_files).content
+        file_list_as_html = requests.get(url_to_list_of_files, verify=False).content
         files = etree.HTML(file_list_as_html).xpath(".//*[self::a]")
 
         # Unnecessary URLs
@@ -90,7 +90,7 @@ class UCIDatabaseEntry():
         # Save each file on the disk
         for single_file in files:
             if single_file.text not in url_blacklist:
-                downloaded_file = requests.get(urllib.parse.urljoin(url_to_list_of_files, single_file.get('href')))
+                downloaded_file = requests.get(urllib.parse.urljoin(url_to_list_of_files, single_file.get('href')), verify=False)
                 open(os.path.join(self.local_path, single_file.text.strip()), 'wb').write(downloaded_file.content)
 
     def load(self) -> pd.DataFrame:
@@ -106,9 +106,12 @@ class UCIDatabaseEntry():
         datafolder_location_xpath = "//body/table[2]/tr/td/table[1]/tr/td[1]/p[1]/span[2]/a[1]"
 
         # Extracts the URL to list of files
-        dataset_page = etree.HTML(requests.get(self.url).content)
+        dataset_page = etree.HTML(requests.get(self.url, verify=False).content)
         datafolder_location_path = dataset_page.xpath(datafolder_location_xpath)[0].get('href')
         return urllib.parse.urljoin(self.base_url, datafolder_location_path.replace('../', ''))
+    
+    def __str__(self) -> str:
+        return f'{self.name} Data Set ({self.local_path})'
             
 
 class UCIDatabase():
@@ -186,7 +189,7 @@ class UCIDatabase():
         table_xpath = "//body/table[2]/tr/td[2]/table[2]/*[self::tr]"
 
         # Retrieve the table (and remove the header)
-        page = etree.HTML(requests.get(self.url).content)
+        page = etree.HTML(requests.get(self.url, verify=False).content)
         rows = page.xpath(table_xpath)[1:]
 
         # Generate dataset
