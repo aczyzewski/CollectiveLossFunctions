@@ -1,5 +1,6 @@
 import os
 from os.path import join as joinpath
+from typing import Tuple
 
 import gzip
 import zipfile
@@ -10,7 +11,7 @@ from .utils import load_arff_file, iterfile
 from .decorators import binary_dataset_loader
 
 @binary_dataset_loader
-def _phishing_websites(location: str) -> pd.DataFrame:
+def _phishing_websites(location: str) -> Tuple[pd.DataFrame, pd.DataFrame]:
     """ Phishing Websites """
     
     # Load arff file
@@ -28,7 +29,7 @@ def _phishing_websites(location: str) -> pd.DataFrame:
 
 
 @binary_dataset_loader
-def _breast_cancer_wisconsin_diag(location: str) -> pd.DataFrame:
+def _breast_cancer_wisconsin_diag(location: str) -> Tuple[pd.DataFrame, pd.DataFrame]:
     """ Breast Cancer Wisconsin (Diagnostic) """
     
     columns = ['id', 'target']
@@ -51,7 +52,7 @@ def _breast_cancer_wisconsin_diag(location: str) -> pd.DataFrame:
 
 
 @binary_dataset_loader
-def _bank_marketing(location: str) -> pd.DataFrame:
+def _bank_marketing(location: str) -> Tuple[pd.DataFrame, pd.DataFrame]:
     """ Bank Marketing """
     
     # Unpack files
@@ -74,7 +75,7 @@ def _bank_marketing(location: str) -> pd.DataFrame:
 
 
 @binary_dataset_loader
-def _adult(location: str) -> pd.DataFrame:
+def _adult(location: str) -> Tuple[pd.DataFrame, pd.DataFrame]:
     """ Adult """
     
     # Read the data
@@ -108,7 +109,7 @@ def _adult(location: str) -> pd.DataFrame:
     return x, y
 
 @binary_dataset_loader
-def _skin_segmentation(location: str) -> pd.DataFrame:
+def _skin_segmentation(location: str) -> Tuple[pd.DataFrame, pd.DataFrame]:
     """ Skin Segmentation """
 
     # Load the data and split into x, y
