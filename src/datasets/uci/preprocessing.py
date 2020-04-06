@@ -145,12 +145,24 @@ def _online_news_popularity(location: str) -> Tuple[pd.DataFrame, pd.DataFrame]:
 def _bike_sharing(location: str) -> Tuple[pd.DataFrame, pd.DataFrame]:
     """ Bike Sharing Dataset """
 
+    # Unzip files
     unzip_path = joinpath(location, 'data')
     with zipfile.ZipFile(joinpath(location, 'Bike-Sharing-Dataset.zip'), 'r') as zipref:
         zipref.extractall(unzip_path)
         
+    # Remove redundant columns
     data = pd.read_csv(joinpath(unzip_path, 'hour.csv'))
     data = data.drop(columns=['instant', 'dteday', 'casual', 'registered'])
+    x, y = data.iloc[:,: -1], data.iloc[:, -1]
+
+    return x, y
+
+@regression_dataset_loader
+def _optical_interconnection_network(location) -> Tuple[pd.DataFrame, pd.DataFrame]:
+    """ Optical Interconnection Network """
+
+    data = pd.read_csv(joinpath(location, 'optical_interconnection_network.csv'), sep=';', decimal=',')
+    data = data.iloc[:,: -5]
     x, y = data.iloc[:,: -1], data.iloc[:, -1]
 
     return x, y
