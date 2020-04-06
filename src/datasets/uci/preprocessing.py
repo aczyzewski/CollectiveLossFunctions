@@ -166,3 +166,31 @@ def _optical_interconnection_network(location) -> Tuple[pd.DataFrame, pd.DataFra
     x, y = data.iloc[:,: -1], data.iloc[:, -1]
 
     return x, y
+
+
+@regression_dataset_loader
+def _communities_and_crime(location) -> Tuple[pd.DataFrame, pd.DataFrame]:
+    """ Communities and Crime """
+
+    # Read data and retrieve columns names
+    columns = [value.split(' ')[1] for value in iterfile(joinpath(location, 'communities.names'), filters=[lambda x: not x.startswith('@attribute')])]
+    data = pd.read_csv(joinpath(location, 'communities.data'), header=None)
+    data.columns = columns
+    data = data.replace('?', np.nan)
+
+    # Redundant columns
+    columns_to_delete = ['fold']
+
+    # Remove columns with more than 20% null values (24 columns)
+    for column_name, null_ratio in zip(data.columns, data.isna().sum() / data.shape[0]):
+        if null_ratio > 0.2:
+            columns_to_delete.append(column_name)
+    data = data.drop(columns=columns_to_delete)
+     
+    # Remove rows with null values (1 row)
+    data = data.dropna()
+
+    # Split
+    x, y = data.iloc[:,: -1], data.iloc[:, -1]
+
+    return x, y

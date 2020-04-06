@@ -262,7 +262,8 @@ class UCIDatabase():
             'Skin Segmentation': preprocessing._skin_segmentation,
             'Online News Popularity': preprocessing._online_news_popularity,
             'Bike Sharing Dataset': preprocessing._bike_sharing,
-            'Optical Interconnection Network': preprocessing._optical_interconnection_network
+            'Optical Interconnection Network': preprocessing._optical_interconnection_network,
+            'Communities and Crime': preprocessing._communities_and_crime
         }
 
         return predefined_methods[dataset_name] if dataset_name in predefined_methods.keys() else None 
