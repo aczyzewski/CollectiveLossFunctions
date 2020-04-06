@@ -194,3 +194,24 @@ def _communities_and_crime(location) -> Tuple[pd.DataFrame, pd.DataFrame]:
     x, y = data.iloc[:,: -1], data.iloc[:, -1]
 
     return x, y
+
+
+@regression_dataset_loader
+def _blogfeedback(location: str) -> Tuple[pd.DataFrame, pd.DataFrame]:
+    """ BlogFeedback """
+
+    # Unzip files
+    unzip_path = joinpath(location, 'data')
+    with zipfile.ZipFile(joinpath(location, 'BlogFeedback.zip'), 'r') as zipref:
+        zipref.extractall(unzip_path)
+
+    # Merge all csv files
+    csv_files = [joinpath(unzip_path, file) for file in os.listdir(unzip_path) if file.endswith('.csv')]
+    data = pd.read_csv(csv_files[0], header=None)
+    for csv in csv_files[1:]:
+        single_csv_data = pd.read_csv(csv, header=None)
+        data = pd.concat((data, single_csv_data), axis=0)
+
+    # Split
+    x, y = data.iloc[:,: -1], data.iloc[:, -1]
+    return x, y

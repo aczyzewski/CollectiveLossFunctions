@@ -263,7 +263,8 @@ class UCIDatabase():
             'Online News Popularity': preprocessing._online_news_popularity,
             'Bike Sharing Dataset': preprocessing._bike_sharing,
             'Optical Interconnection Network': preprocessing._optical_interconnection_network,
-            'Communities and Crime': preprocessing._communities_and_crime
+            'Communities and Crime': preprocessing._communities_and_crime,
+            'BlogFeedback': preprocessing._blogfeedback
         }
 
         return predefined_methods[dataset_name] if dataset_name in predefined_methods.keys() else None 
