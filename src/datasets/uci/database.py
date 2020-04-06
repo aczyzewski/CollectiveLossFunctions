@@ -260,7 +260,8 @@ class UCIDatabase():
             'Bank Marketing': preprocessing._bank_marketing,
             'Adult': preprocessing._adult,
             'Skin Segmentation': preprocessing._skin_segmentation,
-            'Online News Popularity': preprocessing._online_news_popularity
+            'Online News Popularity': preprocessing._online_news_popularity,
+            'Bike Sharing Dataset': preprocessing._bike_sharing
         }
 
         return predefined_methods[dataset_name] if dataset_name in predefined_methods.keys() else None 

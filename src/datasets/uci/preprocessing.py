@@ -126,7 +126,7 @@ def _skin_segmentation(location: str) -> Tuple[pd.DataFrame, pd.DataFrame]:
 
 
 @regression_dataset_loader
-def _online_news_popularity(location: str):
+def _online_news_popularity(location: str) -> Tuple[pd.DataFrame, pd.DataFrame]:
     """ Online News Popularity """ 
 
     # Unzip the files
@@ -139,3 +139,18 @@ def _online_news_popularity(location: str):
     x, y = data.iloc[:,1: -1], data.iloc[:, -1]
     
     return x, y 
+
+
+@regression_dataset_loader
+def _bike_sharing(location: str) -> Tuple[pd.DataFrame, pd.DataFrame]:
+    """ Bike Sharing Dataset """
+
+    unzip_path = joinpath(location, 'data')
+    with zipfile.ZipFile(joinpath(location, 'Bike-Sharing-Dataset.zip'), 'r') as zipref:
+        zipref.extractall(unzip_path)
+        
+    data = pd.read_csv(joinpath(unzip_path, 'hour.csv'))
+    data = data.drop(columns=['instant', 'dteday', 'casual', 'registered'])
+    x, y = data.iloc[:,: -1], data.iloc[:, -1]
+
+    return x, y
