@@ -40,7 +40,7 @@ bin_classifiation_datasets = [
 ```
 
 ```python
-db = UCIDatabase(output_directory='../datasets', verbose=True)
+db = UCIDatabase(output_directory='../datasets', verbose=True, verify_ssl=False)
 ```
 
 ```python
@@ -48,8 +48,4 @@ for dataset_name in bin_classifiation_datasets:
     dataset = db.get(lambda x: x.name == dataset_name, first_only=True)
     x, y = dataset.load()
     print(f'Dataset: {dataset.name} | Shape: {x.shape}')
-```
-
-```python
-
 ```

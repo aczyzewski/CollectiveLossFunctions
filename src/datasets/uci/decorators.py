@@ -20,3 +20,14 @@ def binary_dataset_loader(func: Callable[[str], Tuple[pd.DataFrame, pd.DataFrame
         return x, y
 
     return wrapper
+
+
+def regression_dataset_loader(func: Callable[[str], Tuple[pd.DataFrame, pd.DataFrame]]) -> Tuple[pd.DataFrame, pd.DataFrame]:
+    """ Decorator designed to check outputs of regression datasets loaders """
+
+    def wrapper(*args, **kwargs):
+        x, y = func(*args, **kwargs)
+        assert ptypes.is_numeric_dtype(y), f'{func.__name__}: Target column is not numeric!'
+        return x, y
+
+    return wrapper

@@ -4,6 +4,7 @@ import requests
 import string
 import pandas as pd
 import urllib
+import shutil
 from typing import List, Dict, Callable, Dict, Any
 
 from shutil import rmtree
@@ -11,11 +12,9 @@ from lxml import etree
 
 from . import preprocessing
 
-# Notes:
-# --------
-# TODO: `self.verbose` (UCIDatabaseEntry, UCIDatabase) is not used.
-# TODO: Documentation
-# TODO: Tests
+# Disable unecessary wanings (e.g. disabled SSL verification)
+requests.packages.urllib3.disable_warnings()
+
 
 class UCIDatabaseEntry():
     """ Simple structure to mangae single UCI's dataset """
@@ -23,7 +22,7 @@ class UCIDatabaseEntry():
     def __init__(self, name: str, url: str, data_types: List[str], default_tasks: List[str], 
                 attribute_types: List[str], no_instances: int, no_attributes: int, 
                 year: int, output_directory: str, load_method: Callable = None, 
-                verbose: bool = False) -> None:
+                verify_ssl: bool = True, verbose: bool = False) -> None:
         """ Initialize default values of the class.
         
             Args:
@@ -53,6 +52,7 @@ class UCIDatabaseEntry():
         self.no_instances = no_instances
         self.no_attributes = no_attributes
         self.year = year
+        self.verify_ssl = verify_ssl
 
         # Convertion method
         def raise_not_implemented_error(*args):
@@ -70,28 +70,50 @@ class UCIDatabaseEntry():
         """
 
         self.local_path = os.path.join(self.output_directory, self.name)
-        
-        # Skip if dataset is on the disk        
-        if os.path.isdir(self.local_path) and not overwrite:
-            if self.verbose:
-                print('The dataset exists on the disk.')
-            return
+        revert_changes = False
 
-        os.makedirs(self.local_path, exist_ok=True)
-        
-        # Retrieve list of files of the dataset
-        url_to_list_of_files = self._get_download_url()
-        file_list_as_html = requests.get(url_to_list_of_files).content
-        files = etree.HTML(file_list_as_html).xpath(".//*[self::a]")
+        try:
+            
+            # Skip if dataset is on the disk        
+            if os.path.isdir(self.local_path) and not overwrite:
+                if self.verbose:
+                    print('The dataset exists on the disk.')
+                return
 
-        # Unnecessary URLs
-        url_blacklist = set(['Parent Directory', 'Index', 'Name', 'Last modified', 'Size', 'Description'])
+            os.makedirs(self.local_path, exist_ok=True)
+            
+            # Retrieve list of files of the dataset
+            dataset_directory = self._get_download_url()
+            directory_index = requests.get(dataset_directory, verify=self.verify_ssl).content
+            hyperlinks = etree.HTML(directory_index).xpath(".//*[self::a]")
 
-        # Save each file on the disk
-        for single_file in files:
-            if single_file.text not in url_blacklist:
-                downloaded_file = requests.get(urllib.parse.urljoin(url_to_list_of_files, single_file.get('href')))
-                open(os.path.join(self.local_path, single_file.text.strip()), 'wb').write(downloaded_file.content)
+            # Unnecessary URLs
+            url_blacklist = set(['Parent Directory', 'Index', 'Name', 'Last modified', 'Size', 'Description'])
+
+            # Save each file on the disk
+            for a in hyperlinks:
+
+                if a.text in url_blacklist:
+                    continue
+
+                # Retireve file url, name and content
+                relative_url = a.get('href')
+                url = urllib.parse.urljoin(dataset_directory, relative_url)
+                name = urllib.parse.unquote(os.path.basename(relative_url))
+                downloaded_file = requests.get(url, verify=self.verify_ssl)
+
+                # Write content on the disk
+                open(os.path.join(self.local_path, name), 'wb').write(downloaded_file.content)
+
+        except Exception as exception:
+            revert_changes = True
+            raise exception
+
+        finally:
+            if revert_changes:
+                shutil.rmtree(self.local_path)
+                self.local_path = None
+
 
     def load(self) -> pd.DataFrame:
         """ Applies convertion method on downloaded files to create DataFrame """
@@ -106,9 +128,15 @@ class UCIDatabaseEntry():
         datafolder_location_xpath = "//body/table[2]/tr/td/table[1]/tr/td[1]/p[1]/span[2]/a[1]"
 
         # Extracts the URL to list of files
-        dataset_page = etree.HTML(requests.get(self.url).content)
+        dataset_page = etree.HTML(requests.get(self.url, verify=self.verify_ssl).content)
         datafolder_location_path = dataset_page.xpath(datafolder_location_xpath)[0].get('href')
         return urllib.parse.urljoin(self.base_url, datafolder_location_path.replace('../', ''))
+    
+    def __str__(self) -> str:
+        return f'{self.name} Data Set ({self.local_path})'
+
+    def __repr__(self) -> str:
+        return self.__str__()
             
 
 class UCIDatabase():
@@ -116,7 +144,8 @@ class UCIDatabase():
 
     def __init__(self, url: str = "https://archive.ics.uci.edu/ml/datasets.php", 
                 output_directory: str = "datasets", cache_file: str = 'datasets.csv', 
-                load_from_cache: bool = True, verbose: bool = False) -> None:
+                load_from_cache: bool = True, verify_ssl: bool = True, 
+                verbose: bool = False) -> None:
 
         self.output_directory = output_directory
         os.makedirs(self.output_directory, exist_ok=True)
@@ -125,6 +154,7 @@ class UCIDatabase():
         self.cache_file = cache_file
         self.datasets = []
         self.verbose = verbose
+        self.verify_ssl = verify_ssl
 
         if not load_from_cache or not self._load_cached_data():          
             self._fetch_the_list_of_datasets()
@@ -163,11 +193,19 @@ class UCIDatabase():
             cache = pd.read_csv(cache_file, sep=';')
 
             for index, row in cache.iterrows():
+
+                # Retrieve dataset descriptors
                 values = [row[item] for item in columns]
                 preprocessed_values = [item.split('$') if type(item) is str and '$' in item else item for item in values]
                 preprocessed_values.append(self.output_directory)
                 preprocessed_values.append(self._predefined_load_methods(preprocessed_values[0]))
-                self.datasets.append(UCIDatabaseEntry(*preprocessed_values))
+                dataset_entry = UCIDatabaseEntry(*preprocessed_values)
+
+                # Set parameters
+                dataset_entry.verbose = self.verbose
+                dataset_entry.verify_ssl = self.verify_ssl
+
+                self.datasets.append(dataset_entry)
 
             return True
         return False
@@ -186,7 +224,7 @@ class UCIDatabase():
         table_xpath = "//body/table[2]/tr/td[2]/table[2]/*[self::tr]"
 
         # Retrieve the table (and remove the header)
-        page = etree.HTML(requests.get(self.url).content)
+        page = etree.HTML(requests.get(self.url, verify=self.verify_ssl).content)
         rows = page.xpath(table_xpath)[1:]
 
         # Generate dataset
@@ -221,10 +259,12 @@ class UCIDatabase():
             'Breast Cancer Wisconsin (Diagnostic)': preprocessing._breast_cancer_wisconsin_diag,
             'Bank Marketing': preprocessing._bank_marketing,
             'Adult': preprocessing._adult,
-            'Skin Segmentation': preprocessing._skin_segmentation
-            
+            'Skin Segmentation': preprocessing._skin_segmentation,
+            'Online News Popularity': preprocessing._online_news_popularity,
+            'Bike Sharing Dataset': preprocessing._bike_sharing,
+            'Optical Interconnection Network': preprocessing._optical_interconnection_network,
+            'Communities and Crime': preprocessing._communities_and_crime,
+            'BlogFeedback': preprocessing._blogfeedback
         }
 
         return predefined_methods[dataset_name] if dataset_name in predefined_methods.keys() else None 
-
-        
