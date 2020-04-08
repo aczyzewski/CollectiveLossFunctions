@@ -6,7 +6,11 @@ from .mish import Mish
 class CustomNeuralNetwork(nn.Module):
     """ TODO: Doc """
     
-    def __init__(self, layers: List[int], hidden_activations: Any = "none", output_activations: Any = "none", initialization: str = "he") -> None:
+    def __init__(self, 
+            layers: List[int], hidden_activations: Any = "none", 
+            output_activations: Any = "none", initialization: str = "he",
+            store_output_layer_idx: int = -1) -> None:
+
         super(CustomNeuralNetwork, self).__init__()
     
         self.str_to_activations_converter = {
@@ -47,6 +51,9 @@ class CustomNeuralNetwork(nn.Module):
             "orthogonal": nn.init.orthogonal_,  
         }
 
+        # Store the output of selected layer
+        self.stored_output = None
+
         # Get lists of all elements
         self.__hidden_layers = [
             nn.Linear(input_dim, output_dim) 
@@ -78,6 +85,13 @@ class CustomNeuralNetwork(nn.Module):
         # Create the network
         self.network = nn.Sequential(*self.list_of_network_blocks)
 
+        # Register hooks
+        self.network[store_output_layer_idx].register_forward_hook(self.get_specific_layers_output_hook)
+
+    def get_specific_layers_output_hook(self, module, input_, output):
+        """ Retrieves output of the selected layer of a network """
+        self.stored_output = output
+    
     def forward(self, x: Tensor) -> Tensor:
         return self.network(x)
 
