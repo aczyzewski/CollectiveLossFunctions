@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import os 
 import re
 import requests
@@ -166,6 +168,10 @@ class UCIDatabase():
         filtered_datasets = list(filter(lambda ds: function(ds), self.datasets))
         _ = [dataset.download() for dataset in filtered_datasets if download]
         return filtered_datasets[0] if first_only else filtered_datasets
+
+    def get_by_name(self, name: str) -> UCIDatabaseEntry:
+        """ Returns dataset by name """
+        return self.get(lambda x: x.name == name, first_only=True)
 
     def _cache_data(self):
         """ Saves cached datasets as CSV file on the disk. """

@@ -2,6 +2,8 @@
 from typing import Tuple
 
 import pandas as pd
+import numpy as np
+
 from pandas.api.types import is_numeric_dtype, is_string_dtype
 from sklearn.pipeline import Pipeline
 from sklearn.compose import ColumnTransformer
@@ -10,8 +12,8 @@ from sklearn.impute import SimpleImputer
 from sklearn.preprocessing import StandardScaler, OneHotEncoder
 
 
-def basic_pipeline(x: pd.DataFrame, y: pd.DataFrame) -> Tuple[pd.DataFrame, pd.DataFrame]:
-    """ Transforms inuput data """
+def transform(x: pd.DataFrame, y: pd.DataFrame) -> pd.DataFrame:
+    """ Converts input data """
 
     # Numeric features
     numeric_features = [column for column in x.columns if is_numeric_dtype(x[column])]
@@ -35,5 +37,7 @@ def basic_pipeline(x: pd.DataFrame, y: pd.DataFrame) -> Tuple[pd.DataFrame, pd.D
             ('categorical', categorical_transformer, categorical_features)
     ])
 
-    x = preprocessor.fit_transform(x)
+    x = preprocessor.fit_transform(x).astype('float32')
+    y = y.to_numpy().reshape(-1, 1).astype('float32')
+
     return x, y
