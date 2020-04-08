@@ -88,7 +88,7 @@ class CustomNeuralNetwork(nn.Module):
         # Register hooks
         self.network[store_output_layer_idx].register_forward_hook(self.get_specific_layers_output_hook)
 
-    def get_specific_layers_output_hook(self, module, input_, output):
+    def get_specific_layers_output_hook(self, module: nn.Module, _input: Tensor, output: Tensor) -> None:
         """ Retrieves output of the selected layer of a network """
         self.stored_output = output
     
