@@ -5,6 +5,7 @@ import numpy as np
 from torch import Tensor
 from functools import reduce
 
+
 def mish(input):
     '''
     Applies the mish function element-wise:
@@ -47,7 +48,7 @@ def theil(values: Tensor) -> Tensor:
 
         output_vector.append(theil_index)
 
-    return torch.Tensor(output_vector).reshape(-1,1)
+    return torch.Tensor(output_vector).reshape(-1, 1)
 
 
 def gini(values: Tensor) -> Tensor:
@@ -67,7 +68,7 @@ def gini(values: Tensor) -> Tensor:
 
         output_vector.append(gini_index)
 
-    return torch.Tensor(output_vector).reshape(-1,1)
+    return torch.Tensor(output_vector).reshape(-1, 1)
 
 
 def atkinson(values: Tensor) -> Tensor:
@@ -86,4 +87,4 @@ def atkinson(values: Tensor) -> Tensor:
 
         output_vector.append(atkinson_index)
 
-    return torch.Tensor(output_vector).reshape(-1,1)
+    return torch.Tensor(output_vector).reshape(-1, 1)

@@ -19,6 +19,9 @@ jupyter = "*"
 jupytext = "*"
 scikit-learn = "*"
 faiss-cpu = "*"
+pep8 = "*"
+pylint = "*"
+flake8 = "*"
 
 [requires]
 python_version = "3.7"
