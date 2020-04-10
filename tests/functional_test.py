@@ -2,7 +2,8 @@ import unittest
 import numpy as np
 import torch
 
-from src.functional import entropy, theil, gini, atkinson
+from scipy.stats import norm
+from src.functional import entropy, theil, gini, atkinson, kl_divergence
 
 
 class TestFunctionals(unittest.TestCase):
@@ -44,6 +45,31 @@ class TestFunctionals(unittest.TestCase):
         sample = torch.Tensor([[0, 0, 1, 1]])
         with self.assertRaises(AssertionError):
             entropy(sample, use_weights=True)
+
+    def test_kl_divergence_identical_distributions(self):
+        predictions = torch.Tensor([[.75, .25]])
+        neighbors = torch.Tensor([[0, 0, 0, 1]])
+        self.assertEqual(kl_divergence(predictions, neighbors), 0.)
+
+    def test_kl_divergence_almost_identical_distributions(self):
+        predictions = torch.Tensor([[.9, .1]])
+        neighbors = torch.Tensor([[0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 1]])
+        self.assertLess(torch.abs(kl_divergence(predictions, neighbors) - 0.), 0.001)
+
+    def test_kl_divergence_non_identical_distributions(self):
+        predictions = torch.Tensor([[.75, .25]])
+        neighbors = torch.Tensor([[0, 0, 0, 0, 0, 1]])
+        self.assertGreater(kl_divergence(predictions, neighbors), 0.)
+
+    def test_kl_divergence_large_difference(self):
+        predictions = torch.Tensor([[.1, .9]])
+        neighbors = torch.Tensor([[0, 0, 0, 0, 0, 0, 0, 0, 0, 1]])
+        self.assertGreater(kl_divergence(predictions, neighbors), 1.)
+
+    def test_kl_divergence_multiple_vectors(self):
+        predictions = torch.Tensor([[.75, .25], [.5, .5]])
+        neighbors = torch.Tensor([[0, 0, 0, 1], [0, 0, 1, 1]])
+        self.assertTrue(torch.all(torch.eq(kl_divergence(predictions, neighbors), torch.Tensor([0., 0.]))))
 
     def test_zeros_theil(self):
         sample = torch.Tensor(np.array([[0, 0, 0, 0, 0]]))

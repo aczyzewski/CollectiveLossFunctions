@@ -14,6 +14,29 @@ def mish(input):
     return input * torch.tanh(F.softplus(input))
 
 
+def kl_divergence(predictions: Tensor, values: Tensor) -> Tensor:
+    """ Calculates the Kullback-Leibler divergence between two distributions
+
+    Args:
+        predictions: 2-D tensor with class predictions of processed instances
+        values: 2-D tensor with class labels of nearest neigbors of processed instances
+
+    Returns:
+        1-D tensor with KL-divergencies of neighborhoods of processed instances
+
+    """
+    _kl_divergence = lambda p, q: torch.sum(p * torch.log(p/q))
+
+    output_vector = []
+
+    for i, vector in enumerate(values):
+        vals, counts = torch.unique(vector, return_counts=True)
+        probablity_vector = counts * 1. / torch.sum(counts)
+        output_vector.append(_kl_divergence(predictions[i], probablity_vector))
+
+    return torch.Tensor(output_vector).reshape(-1, 1)
+
+
 def entropy(values: Tensor, distances: Tensor = None, use_weights: bool = None) -> Tensor:
     """ Calculates entropy independently for each vector in a tensor
         Returns results as 1-D tensor
