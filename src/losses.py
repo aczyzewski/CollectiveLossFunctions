@@ -12,9 +12,42 @@ def MSE() -> Callable[[Tensor, Tensor], Tensor]:
 
 
 def HingeLoss() -> Callable[[Tensor, Tensor], Tensor]:
-    def hingeloss(input: Tensor, target: Tensor) -> float:
-        return torch.sum(torch.max(torch.Tensor([0]), 0.5 - input * target) ** 2)
-    return hingeloss
+    def hinge_loss(prediction: Tensor, target: Tensor) -> float:
+        loss = torch.sum(torch.max(torch.Tensor([0]), 1.0 - prediction * target))
+        return loss.mean()
+
+    return hinge_loss
+
+
+def WeightedHingeLoss(train_x: Tensor, train_y: Tensor, k: int = 3) -> Callable[[Tensor, Tensor], Tensor]:
+
+    import faiss
+
+    # Create an index (L2)
+    num_columns, num_attributes = train_x.shape
+    index = faiss.IndexFlatL2(num_attributes)
+    index.add(train_x.numpy())
+
+    def weighted_hinge_loss(prediction: Tensor, target: Tensor, X: Tensor) -> float:
+
+        assert prediction.shape == target.shape, 'Invalid target shape!'
+
+        # find k most similar instances in the input
+        scores, indexes = index.search(X.numpy(), k + 1)
+
+        # get classes of the most similiar vectors
+        knn = train_y[[indexes]][:, 1:]
+
+        # calculate entropy
+        entropies = entropy(knn)
+        assert entropies.shape == target.shape, 'Invalid entropies shape!'
+
+        entropies = entropies.reshape(-1, 1)
+
+        loss = torch.sum(torch.exp(-1 * entropies) * torch.max(torch.Tensor([0]), 1.0 - prediction * target))
+        return loss.mean()
+
+    return weighted_hinge_loss
 
 
 def KNNHingeLoss(train_x: Tensor, train_y: Tensor, k: int = 3, alpha: float = 0.3) -> Callable[[Tensor, Tensor], Tensor]:
