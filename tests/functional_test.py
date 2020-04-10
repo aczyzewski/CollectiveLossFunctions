@@ -36,6 +36,15 @@ class TestFunctionals(unittest.TestCase):
         distances = torch.Tensor([[1, 1, 2, 2]])
         self.assertLess(entropy(sample, distances, use_weights=True), 1.)
 
+        sample = torch.Tensor([[0, 0, 0, 1, 1, 1]])
+        distances = torch.Tensor([[1, 2, 3, 1, 2, 3]])
+        self.assertEqual(entropy(sample, distances, use_weights=True), 1.)
+
+    def test_weighted_entropy_without_distances(self):
+        sample = torch.Tensor([[0, 0, 1, 1]])
+        with self.assertRaises(AssertionError):
+            entropy(sample, use_weights=True)
+
     def test_zeros_theil(self):
         sample = torch.Tensor(np.array([[0, 0, 0, 0, 0]]))
         self.assertEqual(theil(sample), 0.)

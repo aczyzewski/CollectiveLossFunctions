@@ -32,6 +32,9 @@ def entropy(values: Tensor, distances: Tensor = None, use_weights: bool = None) 
     output_vector = []
 
     if use_weights:
+
+        assert distances is not None, "Distances required for weighted entropy!"
+
         for vector in values:
             vals, counts = torch.unique(vector, return_counts=True)
             class_distances = torch.Tensor([ (1/distances[values==val]).sum() for val in vals])
