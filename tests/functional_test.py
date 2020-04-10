@@ -27,6 +27,15 @@ class TestFunctionals(unittest.TestCase):
         self.assertGreaterEqual(entropy(sample), 0.)
         self.assertLessEqual(entropy(sample), np.log(sample_size))
 
+    def test_entropy_multiple_vectors(self):
+        sample = torch.Tensor([[0, 0, 0, 0], [1, 1, 1, 1]])
+        self.assertTrue(torch.all(torch.eq(entropy(sample), torch.Tensor([0., 0.]))))
+
+    def test_weighted_entropy(self):
+        sample = torch.Tensor([[0, 0, 1, 1]])
+        distances = torch.Tensor([[1, 1, 2, 2]])
+        self.assertLess(entropy(sample, distances, use_weights=True), 1.)
+
     def test_zeros_theil(self):
         sample = torch.Tensor(np.array([[0, 0, 0, 0, 0]]))
         self.assertEqual(theil(sample), 0.)
