@@ -3,52 +3,52 @@ from torch import nn, Tensor
 
 from .mish import Mish
 
+
 class CustomNeuralNetwork(nn.Module):
     """ TODO: Doc """
-    
-    def __init__(self, 
-            layers: List[int], hidden_activations: Any = "none", 
-            output_activations: Any = "none", initialization: str = "he",
-            store_output_layer_idx: int = -1) -> None:
+
+    def __init__(self, layers: List[int], hidden_activations: Any = "none",
+                 output_activations: Any = "none", initialization: str = "he",
+                 store_output_layer_idx: int = -1) -> None:
 
         super(CustomNeuralNetwork, self).__init__()
-    
+
         self.str_to_activations_converter = {
-            "elu": nn.ELU, 
-            "hardshrink": nn.Hardshrink, 
+            "elu": nn.ELU,
+            "hardshrink": nn.Hardshrink,
             "hardtanh": nn.Hardtanh,
-            "leakyrelu": nn.LeakyReLU, 
-            "logsigmoid": nn.LogSigmoid, 
+            "leakyrelu": nn.LeakyReLU,
+            "logsigmoid": nn.LogSigmoid,
             "prelu": nn.PReLU,
-            "relu": nn.ReLU, 
-            "relu6": nn.ReLU6, 
-            "rrelu": nn.RReLU, 
+            "relu": nn.ReLU,
+            "relu6": nn.ReLU6,
+            "rrelu": nn.RReLU,
             "selu": nn.SELU,
-            "sigmoid": nn.Sigmoid, 
-            "softplus": nn.Softplus, 
+            "sigmoid": nn.Sigmoid,
+            "softplus": nn.Softplus,
             "logsoftmax": nn.LogSoftmax,
-            "softshrink": nn.Softshrink, 
-            "softsign": nn.Softsign, 
+            "softshrink": nn.Softshrink,
+            "softsign": nn.Softsign,
             "tanh": nn.Tanh,
-            "tanhshrink": nn.Tanhshrink, 
-            "softmin": nn.Softmin, 
+            "tanhshrink": nn.Tanhshrink,
+            "softmin": nn.Softmin,
             "softmax": nn.Softmax,
             "mish": Mish,
             "none": None
         }
 
         self.str_to_initialiser_converter = {
-            "uniform": nn.init.uniform_, 
+            "uniform": nn.init.uniform_,
             "normal": nn.init.normal_,
             "eye": nn.init.eye_,
-            "xavier_uniform": nn.init.xavier_uniform_, 
+            "xavier_uniform": nn.init.xavier_uniform_,
             "xavier": nn.init.xavier_uniform_,
             "xavier_normal": nn.init.xavier_normal_,
-            "kaiming_uniform": nn.init.kaiming_uniform_, 
+            "kaiming_uniform": nn.init.kaiming_uniform_,
             "kaiming": nn.init.kaiming_uniform_,
-            "kaiming_normal": nn.init.kaiming_normal_, 
+            "kaiming_normal": nn.init.kaiming_normal_,
             "he": nn.init.kaiming_normal_,
-            "orthogonal": nn.init.orthogonal_,  
+            "orthogonal": nn.init.orthogonal_,
         }
 
         # Store the output of selected layer
@@ -56,7 +56,7 @@ class CustomNeuralNetwork(nn.Module):
 
         # Get lists of all elements
         self.__hidden_layers = [
-            nn.Linear(input_dim, output_dim) 
+            nn.Linear(input_dim, output_dim)
             for input_dim, output_dim in zip(layers[:-1], layers[1:])
         ]
         self.__hidden_activations = self.str_to_activations_converter[hidden_activations]
@@ -70,7 +70,7 @@ class CustomNeuralNetwork(nn.Module):
                 self.list_of_network_blocks.append(self.__hidden_activations())
 
         # Remove the last activation
-        if self.__hidden_activations is not None: 
+        if self.__hidden_activations is not None:
             self.list_of_network_blocks.pop()
 
         # Add output activation
@@ -91,7 +91,7 @@ class CustomNeuralNetwork(nn.Module):
     def get_specific_layers_output_hook(self, module: nn.Module, _input: Tensor, output: Tensor) -> None:
         """ Retrieves output of the selected layer of a network """
         self.stored_output = output
-    
+
     def forward(self, x: Tensor) -> Tensor:
         return self.network(x)
 
