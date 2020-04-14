@@ -50,6 +50,34 @@ def WeightedHingeLoss(train_x: Tensor, train_y: Tensor, k: int = 3) -> Callable[
     return weighted_hinge_loss
 
 
+def CollectiveHingeLoss(train_x: Tensor,
+                        train_y: Tensor,
+                        k: int = 3,
+                        alpha: float = 0.1) -> Callable[[Tensor, Tensor], Tensor]:
+
+    import faiss
+
+    # Create an index (L2)
+    num_columns, num_attributes = train_x.shape
+    index = faiss.IndexFlatL2(num_attributes)
+    index.add(train_x.numpy())
+
+    def collective_hinge_loss(prediction: Tensor, target: Tensor, X: Tensor, alpha = alpha) -> float:
+
+        assert prediction.shape == target.shape, 'Invalid target shape!'
+
+        # find k most similar instances in the input
+        scores, indexes = index.search(X.numpy(), k + 1)
+
+        # get the average class of the most similiar vectors
+        knn = torch.mean(train_y[[indexes]][:, 1:])
+
+        loss = torch.sum(torch.max(torch.Tensor([0]), 1.0 - prediction * target - alpha * prediction *  knn))
+        return loss.mean()
+
+    return collective_hinge_loss
+
+
 def KNNHingeLoss(train_x: Tensor, train_y: Tensor, k: int = 3, alpha: float = 0.3) -> Callable[[Tensor, Tensor], Tensor]:
     """ 
         Implementation of KNN Hinge Loss
