@@ -15,13 +15,13 @@ from torch.utils.data import DataLoader
 
 def training_step(model: Module, criterion: Callable[[Tensor, Tensor], Tensor],
                   optimizer: Optimizer, inputs: Tensor, labels: Tensor,
-                  knn_loss: bool = False) -> float:
+                  collective_loss: bool = False) -> float:
     """ Performs single train step """
 
     optimizer.zero_grad()
 
     outputs = model(inputs)
-    loss = criterion(outputs, labels) if not knn_loss else criterion(outputs, labels, inputs)
+    loss = criterion(outputs, labels) if not collective_loss else criterion(outputs, labels, inputs)
 
     loss.backward()
     optimizer.step()
@@ -30,12 +30,12 @@ def training_step(model: Module, criterion: Callable[[Tensor, Tensor], Tensor],
 
 
 def validation_step(model: Module, criterion: Callable[[Tensor, Tensor], Tensor],
-                    inputs: Tensor, labels: Tensor, knn_loss: bool = False) -> float:
+                    inputs: Tensor, labels: Tensor, collective_loss: bool = False) -> float:
     """ Forward-propagation without calculating gradients """
 
     with torch.no_grad():
         outputs = model(inputs)
-        loss = criterion(outputs, labels) if not knn_loss else criterion(outputs, labels, inputs)
+        loss = criterion(outputs, labels) if not collective_loss else criterion(outputs, labels, inputs)
 
     return loss.item()
 
@@ -44,7 +44,7 @@ def run_training_loop(
         optimizer: Optimizer = None, criterion: Callable[[Tensor, Tensor], Tensor] = None,
         model: Module = None, trainloader: DataLoader = None, valloader: DataLoader = None,
         epochs: int = 100, early_stopping: int = None, return_best_model: bool = True,
-        knn_loss: bool = False, tensorboard_path: str = '../tensorboard', use_wandb: bool = True,
+        collective_loss: bool = False, tensorboard_path: str = '../tensorboard', use_wandb: bool = True,
         wandb_project_name: str = 'collective_loss_functions', tqdm_description: str = None
         ) -> Tuple[Module, List[float], List[float]]:
 
@@ -75,7 +75,7 @@ def run_training_loop(
 
         # Training loop
         for batch_idx, (inputs, labels) in enumerate(trainloader, 0):
-            loss = training_step(model, criterion, optimizer, inputs, labels, knn_loss)
+            loss = training_step(model, criterion, optimizer, inputs, labels, collective_loss)
             training_loss.append(loss)
         mean_train_loss = np.mean(training_loss)
         training_loss_history.append(mean_train_loss)
@@ -83,7 +83,7 @@ def run_training_loop(
         # Validation loop
         if valloader is not None:
             for batch_idx, (inputs, labels) in enumerate(valloader, 0):
-                loss = validation_step(model, criterion, inputs, labels, knn_loss)
+                loss = validation_step(model, criterion, inputs, labels, collective_loss)
                 validation_loss.append(loss)
             mean_validation_loss = np.mean(validation_loss)
             validation_loss_history.append(mean_validation_loss)

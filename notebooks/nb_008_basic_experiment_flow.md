@@ -5,7 +5,7 @@ jupyter:
       extension: .md
       format_name: markdown
       format_version: '1.2'
-      jupytext_version: 1.4.1
+      jupytext_version: 1.4.2
   kernelspec:
     display_name: Python 3
     language: python
@@ -138,7 +138,7 @@ for dataset in bin_classifiation_datasets:
                 optimizer = Adam(model.parameters(), lr=learning_rate)
                 model, train_loss, val_loss = run_training_loop(
                     optimizer, criterion, model, train_dataloader, val_dataloader, epochs=max_epochs,
-                    knn_loss=is_knn_loss, use_wandb=False
+                    collective_loss=is_knn_loss, use_wandb=False
                 )
                 
                 # Evaluate the model
