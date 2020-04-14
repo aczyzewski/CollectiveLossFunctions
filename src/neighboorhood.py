@@ -7,29 +7,36 @@ import numpy as np
 class AbstractKNN:
     """ Should be used to create an unified interface of any NN library. """
 
-    def __init__(self, data_x: np.array, data_y: np.array,
-                 metric: str = 'L2', use_gpu: bool = False,
-                 verbose: bool = False) -> None:
+    def __init__(self, data_x: np.array, data_y: np.array, metric: str = 'L2',
+                 k: int = 3, use_gpu: bool = False, verbose: bool = False,
+                 precompute: bool = False) -> None:
 
-        self.data_x = data_x.astype('float32')
-        self.data_y = data_y.astype('int32')
+        self.data_x = data_x
+        self.data_y = data_y
+        self.k = k
         self.use_gpu = use_gpu
         self.metric = metric
         self.verbose = verbose
+        self.cache = {}
+        self.precompute = precompute
 
     def get(self, query: np.array, k: int, exclude_query: bool = True
             ) -> Tuple[np.array, np.array, np.array]:
         """ Returns kNN of a query.
 
-            Arguments:
+            Args:
                 exclude_query (bool): if a query is in the dataset
-                    the function will remove the query from results.
-                return_distances (bool): if True the the function will
-                    return calculated distances also
+                    the function will remove it from results.
 
             Returns:
                 (neighboors, distances, classes)
         """
+        raise NotImplementedError
+
+    def precompute(self, cache_distances: bool = True,
+                   cache_classes: bool = True) -> None:
+        """ Caches k-neighboors (distances and classes) for every
+            example in the dataset. """
         raise NotImplementedError
 
 
@@ -53,12 +60,18 @@ class FaissKNN(AbstractKNN):
         if self.use_gpu:
             print('Warning: (faiss) GPU is not supported in current version.')
 
+        if self.precompute:
+            print('Warning: Precompute is not supported in current version.')
+
+        self.data_x = self.data_x.astype('float32')
+        self.data_y = self.data_y.astype('int32')
+
         # Create an index
         num_columns, num_attributes = self.data_x.shape
         self.index = faiss.IndexFlatL2(num_attributes)
         self.index.add(self.data_x)
 
-    def get(self, query: np.array, k: int, exclude_query: bool = False,
+    def get(self, query: np.array, exclude_query: bool = False
             ) -> Tuple[np.array, np.array, np.array]:
 
         if not isinstance(query, np.float32):
@@ -66,7 +79,7 @@ class FaissKNN(AbstractKNN):
             query = query.astype('float32')
 
         # Find K most similar instances in the input
-        _k = k if not exclude_query else k + 1
+        _k = self.k if not exclude_query else self.k + 1
         distances, indices = self.index.search(query, _k)
 
         if exclude_query:
