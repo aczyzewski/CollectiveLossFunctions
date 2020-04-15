@@ -92,7 +92,7 @@ class TestFunctionals(unittest.TestCase):
 
     def test_theil(self):
         sample = torch.Tensor(np.array([[0, 0, 0, 0, 0, 1]]))
-        self.assertEqual(theil(sample), (1/2) * ((5/3) * np.log(5/3) + (1/3) * np.log(1/3)))
+        self.assertTrue(abs(theil(sample).item() - (1/2) * ((5/3) * np.log(5/3) + (1/3) * np.log(1/3))) < 1e-7)
 
     def test_theil_multiple_vectors(self):
         sample = torch.Tensor(np.array([[0, 0, 0, 0], [1, 1, 1, 1]]))

@@ -7,11 +7,10 @@ from functools import reduce
 
 
 def mish(input):
-    '''
-    Applies the mish function element-wise:
-    mish(x) = x * tanh(softplus(x)) = x * tanh(ln(1 + exp(x)))
-    See additional documentation for mish class.
-    '''
+    """ Applies the mish function element-wise:
+        mish(x) = x * tanh(softplus(x)) = x * tanh(ln(1 + exp(x)))
+        See additional documentation for mish class.
+    """
     return input * torch.tanh(F.softplus(input))
 
 
@@ -50,6 +49,7 @@ def entropy(values: Tensor, distances: Tensor = None, use_weights: bool = None) 
         Returns:
             1-D tensor with entropies of neighborhoods of processed instances
     """
+
     _entropy = lambda vector: torch.abs(-1. * torch.sum(torch.Tensor(
         [probability * torch.log2(probability) for probability in vector])))
 
@@ -61,7 +61,7 @@ def entropy(values: Tensor, distances: Tensor = None, use_weights: bool = None) 
 
         for vector in values:
             vals, counts = torch.unique(vector, return_counts=True)
-            class_distances = torch.Tensor([ (1/distances[values==val]).sum() for val in vals])
+            class_distances = torch.Tensor([(1 / distances[values == val]).sum() for val in vals])
             probability_vector = F.softmax(class_distances, dim=0)
             output_vector.append(_entropy(probability_vector))
     else:
@@ -74,7 +74,8 @@ def entropy(values: Tensor, distances: Tensor = None, use_weights: bool = None) 
 
 
 def theil(values: Tensor) -> Tensor:
-    """ Computes the Theil index of the inequality of distribution (https://en.wikipedia.org/wiki/Theil_index)
+    """ Computes the Theil index of the inequality of distribution 
+        (https://en.wikipedia.org/wiki/Theil_index)
         Returns the value of the Theil index of the distribution """
 
     output_vector = []
