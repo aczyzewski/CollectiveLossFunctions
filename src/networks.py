@@ -1,95 +1,80 @@
 from typing import List, Any
 from torch import nn, Tensor
-
-from .mish import Mish
+import src.utils as utils
 
 
 class CustomNeuralNetwork(nn.Module):
     """ TODO: Doc """
 
-    def __init__(self, layers: List[int], hidden_activations: Any = "none",
-                 output_activations: Any = "none", initialization: str = "he",
-                 store_output_layer_idx: int = -1) -> None:
+    def __init__(self, layers: List[int], hidden_activations: Any = None,
+                 output_activations: Any = None, initialization: str = "he",
+                 store_output_layer_idx: int = -4) -> None:
 
+        """ Note: `store_output_layer_idx` allows you to set the
+            idx of a layer that output will be stored inside the model
+            instance. Keep in mind that activation functions are also
+            considered as layers. For example, the default value of
+            the parameter (-4) points here:
+                 
+                *
+            [Linear] -> [Hidden Acitivation] -> [Linear] -> [Output activation]
+        """
         super(CustomNeuralNetwork, self).__init__()
 
-        self.str_to_activations_converter = {
-            "elu": nn.ELU,
-            "hardshrink": nn.Hardshrink,
-            "hardtanh": nn.Hardtanh,
-            "leakyrelu": nn.LeakyReLU,
-            "logsigmoid": nn.LogSigmoid,
-            "prelu": nn.PReLU,
-            "relu": nn.ReLU,
-            "relu6": nn.ReLU6,
-            "rrelu": nn.RReLU,
-            "selu": nn.SELU,
-            "sigmoid": nn.Sigmoid,
-            "softplus": nn.Softplus,
-            "logsoftmax": nn.LogSoftmax,
-            "softshrink": nn.Softshrink,
-            "softsign": nn.Softsign,
-            "tanh": nn.Tanh,
-            "tanhshrink": nn.Tanhshrink,
-            "softmin": nn.Softmin,
-            "softmax": nn.Softmax,
-            "mish": Mish,
-            "none": None
-        }
+        self.hidden_activations = hidden_activations
+        self.output_activations = output_activations
+        self.initialization = initialization
 
-        self.str_to_initialiser_converter = {
-            "uniform": nn.init.uniform_,
-            "normal": nn.init.normal_,
-            "eye": nn.init.eye_,
-            "xavier_uniform": nn.init.xavier_uniform_,
-            "xavier": nn.init.xavier_uniform_,
-            "xavier_normal": nn.init.xavier_normal_,
-            "kaiming_uniform": nn.init.kaiming_uniform_,
-            "kaiming": nn.init.kaiming_uniform_,
-            "kaiming_normal": nn.init.kaiming_normal_,
-            "he": nn.init.kaiming_normal_,
-            "orthogonal": nn.init.orthogonal_,
-        }
+        # Determine hidden activations
+        if isinstance(self.hidden_activations, str):
+            self.hidden_activations = utils.get_activation_by_name(
+                self.hidden_activations)
+
+        # Determine output activations
+        if isinstance(self.output_activations, str):
+            self.output_activations = utils.get_activation_by_name(
+                self.output_activations)
+
+        # Determie initialization
+        if isinstance(self.initialization, str):
+            self.initialization = utils.get_initialization_by_name(
+                self.initialization
+            )
 
         # Store the output of selected layer
         self.stored_output = None
 
-        # Get lists of all elements
-        self.__hidden_layers = [
+        # Stack linear layers
+        self._linear_layers = [
             nn.Linear(input_dim, output_dim)
-            for input_dim, output_dim in zip(layers[:-1], layers[1:])
+            for (input_dim, output_dim) in zip(layers[: -1], layers[1:])
         ]
-        self.__hidden_activations = self.str_to_activations_converter[hidden_activations]
-        self.__output_activations = self.str_to_activations_converter[output_activations]
 
-        # Combine them together
-        self.list_of_network_blocks = []
-        for layer in self.__hidden_layers:
-            self.list_of_network_blocks.append(layer)
-            if self.__hidden_activations is not None:
-                self.list_of_network_blocks.append(self.__hidden_activations())
+        # Initialize layers
+        for layer in self._linear_layers:
+            self.initialization(layer.weight)
 
-        # Remove the last activation
-        if self.__hidden_activations is not None:
-            self.list_of_network_blocks.pop()
+        # Append an activation to each layer of a network
+        self.network = []
+        if self.hidden_activations is not None:
+            for layer in self._linear_layers:
+                self.network.extend([layer, self.hidden_activations()])
+            self.network.pop()
+        else:
+            self.network = self._linear_layers
 
-        # Add output activation
-        if self.__output_activations is not None:
-            self.list_of_network_blocks.append(self.__output_activations())
+        # Add an output activation
+        if self.output_activations is not None:
+            self.network.append(self.output_activations())
 
-        # Initalize layers
-        init_method = self.str_to_initialiser_converter[initialization]
-        for layer in self.__hidden_layers:
-            init_method(layer.weight)
+        # Convert to Sequential
+        self.network = nn.Sequential(*self.network)
+        self.network[store_output_layer_idx].register_forward_hook(
+            self.get_layer_output_hook)
 
-        # Create the network
-        self.network = nn.Sequential(*self.list_of_network_blocks)
-
-        # Register hooks
-        self.network[store_output_layer_idx].register_forward_hook(self.get_specific_layers_output_hook)
-
-    def get_specific_layers_output_hook(self, module: nn.Module, _input: Tensor, output: Tensor) -> None:
-        """ Retrieves output of the selected layer of a network """
+    def get_layer_output_hook(self, module: nn.Module, _input: Tensor,
+                              output: Tensor) -> None:
+        """ Retrieves output of a layer of the network """
         self.stored_output = output
 
     def forward(self, x: Tensor) -> Tensor:
