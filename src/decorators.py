@@ -24,7 +24,8 @@ def lossfunction(func: LossFunction) -> LossFunction:
         assert loss.shape == target.shape, 'Invalid loss shape!'
         assert torch.isnan(loss).sum() == 0, "Calculated loss \
             contains NaN values"
-
+        assert (loss < 0).sum() == 0, "Negative loss function!"
+        
         reduction_method = get_reduction_method(reduction_method)
         return reduction_method(loss)
 

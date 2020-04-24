@@ -1,5 +1,4 @@
 import unittest
-import numpy as np
 import torch
 
 from src.neighboorhood import FaissKNN
@@ -7,8 +6,8 @@ from src.neighboorhood import FaissKNN
 
 class TestNeighboorhood(unittest.TestCase):
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def test_knn_wrapper(self):
+        self.assertEqual(1, 1)
 
 
 if __name__ == '__main__':

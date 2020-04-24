@@ -1,7 +1,6 @@
 from typing import Callable, Union
 
 import torch
-import torch.nn.functional as F
 from torch import Tensor
 
 from src.functional import entropy, kl_divergence
@@ -13,11 +12,10 @@ from src.decorators import lossfunction
 LossFunction = Callable[[Tensor, Tensor], Tensor]
 
 # Constants
-EPSILON = 1e-16
+EPSILON = 1e-9
 
 
 # --- Basic loss functions
-
 def HingeLoss() -> LossFunction:
     """ Pure Hinge Loss implementation """
 
@@ -60,8 +58,6 @@ def BinaryCrossEntropy() -> LossFunction:
     def binary_cross_entropy(prediction: Tensor, target: Tensor,
                              reduction: str = 'mean') -> Union[float, Tensor]:
 
-        prediction = F.softmax(prediction, dim=1)
-
         loss = (
             - target * torch.log2(prediction + EPSILON)
             - (Tensor([1.]) - target)
@@ -79,8 +75,10 @@ def LogisticLoss() -> LossFunction:
     @lossfunction
     def logistic_loss(prediction: Tensor, target: Tensor,
                       reduction: str = 'mean') -> Union[float, Tensor]:
+
+        cached_log = 1.4426950408889634     # = 1 / ln(2)
         loss = (
-            Tensor([1.]) / torch.log(Tensor([2.]))
+            Tensor([cached_log])
             * torch.log(
                 Tensor([1.])
                 + torch.exp(- target * prediction)
@@ -105,8 +103,8 @@ def ExponentialLoss(beta: float = 0.5) -> LossFunction:
 
     return exponential_loss
 
-# --- Entropy-weighted loss functions
 
+# --- Entropy-weighted loss functions
 def EntropyWeightedBinaryLoss(base_loss_function: LossFunction,
                               knn: AbstractKNN) -> LossFunction:
     """ Calculates pure loss function (`base_loss_fuction`)
@@ -132,8 +130,8 @@ def EntropyWeightedBinaryLoss(base_loss_function: LossFunction,
 
     return entropy_weighted_bin_loss
 
-# --- Entropy-regularized loss functions
 
+# --- Entropy-regularized loss functions
 def EntropyRegularizedBinaryLoss(base_loss_function: LossFunction,
                                  knn: AbstractKNN) -> LossFunction:
 
@@ -149,22 +147,7 @@ def EntropyRegularizedBinaryLoss(base_loss_function: LossFunction,
         base_loss = base_loss_function(prediction, target, reduction='none')
 
         _, _, classes = knn.get(inputs.numpy(), exclude_query=True)
-
-        # FIXME: Improve: find cleaner and more efficient way to convert
-        #        a vector into probability distribution of 2 classes
-        _k = float(knn.k)
-        classes = Tensor(classes.astype('float32'))
-        pos_examples = torch.sum(classes == 1.0, dim=1, dtype=torch.float32)
-        neg_examples = _k - pos_examples
-
-        nn_distribution = torch.stack((neg_examples, pos_examples), dim=1)
-        nn_distribution /= _k
-
-        assert pred_class_dist.shape == nn_distribution.shape, \
-            'Invalid distibution shape!'
-
-        kl_div_score = kl_divergence(pred_class_dist,
-                                     nn_distribution + EPSILON)
+        kl_div_score = kl_divergence(pred_class_dist, Tensor(classes))
 
         assert kl_div_score.shape == target.shape, \
             'Invalid KL divergence output shape!'
@@ -176,8 +159,8 @@ def EntropyRegularizedBinaryLoss(base_loss_function: LossFunction,
 
     return entropy_regularized_bin_loss
 
-# --- Collective loss functions
 
+# --- Collective loss functions
 def CollectiveHingeLoss(knn: AbstractKNN, alpha: float = 0.5) -> LossFunction:
     """ Collective Hinge Loss implementation """
 
@@ -186,17 +169,15 @@ def CollectiveHingeLoss(knn: AbstractKNN, alpha: float = 0.5) -> LossFunction:
                               inputs: Tensor, reduction: str = 'mean'
                               ) -> Union[float, Tensor]:
 
+        # Get and return average class
         _, _, classes = knn.get(inputs.numpy(), exclude_query=True)
-
-        # Get and return most frequent class
-        knn_classes, _ = torch.mode(Tensor(classes), dim=1)
-        knn_classes = knn_classes.reshape(-1, 1)
-        assert knn_classes.shape == target.shape, 'Invalid knn classes shape!'
+        avg_class = (Tensor(classes).sum(dim=1) / knn.k).reshape(-1, 1)
+        assert avg_class.shape == target.shape, 'Invalid avg class shape!'
 
         loss = torch.max(
             torch.zeros_like(prediction),
             Tensor([1.]) - prediction * target
-            - alpha * (torch.ones_like(knn_classes) - target * knn_classes)
+            - alpha * (torch.ones_like(avg_class) - target * avg_class)
         )
 
         reduction_method = get_reduction_method(reduction)
@@ -237,22 +218,20 @@ def CollectiveBinaryCrossEntropy(knn: AbstractKNN, alpha: float = 0.5
                                      inputs: Tensor, reduction: str = 'mean'
                                      ) -> Union[float, Tensor]:
 
+        # Get and return average class
         _, _, classes = knn.get(inputs.numpy(), exclude_query=True)
+        avg_class = (Tensor(classes).sum(dim=1) / knn.k).reshape(-1, 1)
+        assert avg_class.shape == target.shape, 'Invalid avg class shape!'
 
-        # Get and return most frequent class
-        knn_classes, _ = torch.mode(Tensor(classes), dim=1)
-        knn_classes = knn_classes.reshape(-1, 1)
-        assert knn_classes.shape == target.shape, 'Invalid knn classes shape!'
-
-        prediction = F.softmax(prediction, dim=1)
         loss = (
-            - target * torch.log2(prediction)
+            - target * torch.log2(prediction + EPSILON)
             - (Tensor([1.]) - target)
             * torch.log2(Tensor([1.]) - prediction + EPSILON)
+
             + alpha * (
-                - target * torch.log2(knn_classes + EPSILON)
+                - target * torch.log2(avg_class + EPSILON)
                 - (Tensor([1.]) - target)
-                * torch.log2(Tensor([1.]) - knn_classes + EPSILON)
+                * torch.log2(Tensor([1.]) - avg_class + EPSILON)
             )
         )
         reduction_method = get_reduction_method(reduction)
@@ -269,20 +248,18 @@ def CollectiveLogisticLoss(knn: AbstractKNN, alpha: float = 0.5
                                  inputs: Tensor, reduction: str = 'mean'
                                  ) -> Union[float, Tensor]:
 
+        # Get and return average class
         _, _, classes = knn.get(inputs.numpy(), exclude_query=True)
+        avg_class = (Tensor(classes).sum(dim=1) / knn.k).reshape(-1, 1)
+        assert avg_class.shape == target.shape, 'Invalid avg class shape!'
 
-        # Get and return most frequent class
-        knn_classes, _ = torch.mode(Tensor(classes), dim=1)
-        knn_classes = knn_classes.reshape(-1, 1)
-        assert knn_classes.shape == target.shape, 'Invalid knn classes shape!'
-
-        # FIXME: Cache the result of torch.log(Tensor([2.])
+        cached_log = 1.4426950408889634     # = 1 / ln(2)
         loss = (
-            Tensor([1.]) / torch.log(Tensor([2.]))
+            Tensor([cached_log])
             * torch.log(
                 Tensor([1.])
                 + torch.exp(- target * prediction)
-                - alpha * torch.exp(-target * knn_classes)
+                - alpha * torch.exp(-target * avg_class)
                 + EPSILON
             )
         )
@@ -301,15 +278,13 @@ def CollectiveExponentialLoss(knn: AbstractKNN, alpha: float = 0.5,
                                     inputs: Tensor, reduction: str = 'mean'
                                     ) -> Union[float, Tensor]:
 
+        # Get and return average class
         _, _, classes = knn.get(inputs.numpy(), exclude_query=True)
-
-        # Get and return most frequent class
-        knn_classes, _ = torch.mode(Tensor(classes), dim=1)
-        knn_classes = knn_classes.reshape(-1, 1)
-        assert knn_classes.shape == target.shape, 'Invalid knn classes shape!'
+        avg_class = (Tensor(classes).sum(dim=1) / knn.k).reshape(-1, 1)
+        assert avg_class.shape == target.shape, 'Invalid avg class shape!'
 
         loss = (torch.exp(- beta * prediction * target)
-                - alpha * torch.exp(- prediction * knn_classes))
+                - alpha * torch.exp(- prediction * avg_class))
 
         reduction_method = get_reduction_method(reduction)
         return reduction_method(loss)
