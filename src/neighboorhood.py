@@ -73,11 +73,8 @@ class FaissKNN(AbstractKNN):
 
     def get(self, query: np.array, exclude_query: bool = False
             ) -> Tuple[np.array, np.array, np.array]:
-
-        if not isinstance(query, np.float32):
-            print('Warning: Query should be represented as float32 array')
-            query = query.astype('float32')
-
+        """ Note: the query type should be float32 """
+        
         # Find K most similar instances in the input
         _k = self.k if not exclude_query else self.k + 1
         distances, indices = self.index.search(query, _k)

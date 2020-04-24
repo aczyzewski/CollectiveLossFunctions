@@ -19,7 +19,8 @@ def kl_divergence(predictions: Tensor, values: Tensor) -> Tensor:
 
     Args:
         predictions: 2-D tensor with class predictions of processed instances
-        values: 2-D tensor with class labels of nearest neigbors of processed instances
+        values: 2-D tensor with class labels of nearest neigbors of processed
+        instances
 
     Returns:
         1-D tensor with KL-divergencies of neighborhoods of processed instances
@@ -29,6 +30,7 @@ def kl_divergence(predictions: Tensor, values: Tensor) -> Tensor:
 
     output_vector = []
 
+    # TODO: Should be implemented as tensor operation
     for i, vector in enumerate(values):
         vals, counts = torch.unique(vector, return_counts=True)
         probablity_vector = counts * 1. / torch.sum(counts)

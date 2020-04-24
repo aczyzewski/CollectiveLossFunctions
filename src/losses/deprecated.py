@@ -25,7 +25,8 @@ def KNNHingeLoss(train_x: Tensor, train_y: Tensor, k: int = 3, alpha: float = 0.
     index.add(train_x.numpy())
 
     # Deprecated
-    print('Warning: This loss function (KNNHingeLoss) is deprecated and will be removed in a future version.')
+    print('Warning: This loss function (KNNHingeLoss) is deprecated \
+        and will be removed in a future version.')
 
     def knn_hingle_loss(predictions: Tensor, target: Tensor, input_data: Tensor) -> Tensor:
 
@@ -72,7 +73,8 @@ def KNNMSELoss(train_x: Tensor, train_y: Tensor, k: int = 3) -> Callable[[Tensor
     index.add(train_x.numpy())
 
     # Deprecated
-    print('Warning: This loss function (KNNMSELoss) is deprecated and will be removed in a future version.')
+    print('Warning: This loss function (KNNMSELoss) is deprecated \
+        and will be removed in a future version.')
 
     def knn_mse_loss(prediction: Tensor, target: Tensor, input_data: Tensor) -> Tensor:
 
