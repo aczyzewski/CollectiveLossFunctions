@@ -32,7 +32,8 @@ def transform(x: pd.DataFrame, y: pd.DataFrame) -> pd.DataFrame:
         transformers=[
             ('numerical', numeric_transformer, numeric_features),
             ('categorical', categorical_transformer, categorical_features)
-        ]
+        ],
+        sparse_threshold=0
     )
 
     x = preprocessor.fit_transform(x).astype('float32')
