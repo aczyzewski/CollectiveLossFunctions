@@ -258,9 +258,7 @@ def CollectiveLogisticLoss(knn: AbstractKNN, alpha: float = 0.5
             Tensor([cached_log])
             * torch.log(
                 Tensor([1.])
-                + torch.exp(- target * prediction)
-                - alpha * torch.exp(-target * avg_class)
-                + EPSILON
+                + torch.exp(-prediction * (target + alpha * avg_class))
             )
         )
 
@@ -283,9 +281,7 @@ def CollectiveExponentialLoss(knn: AbstractKNN, alpha: float = 0.5,
         avg_class = (Tensor(classes).sum(dim=1) / knn.k).reshape(-1, 1)
         assert avg_class.shape == target.shape, 'Invalid avg class shape!'
 
-        loss = (torch.exp(- beta * prediction * target)
-                - alpha * torch.exp(- prediction * avg_class))
-
+        loss = torch.exp(- beta * prediction * (target + alpha * avg_class))
         reduction_method = get_reduction_method(reduction)
         return reduction_method(loss)
 

@@ -43,8 +43,8 @@ class TestLosses(unittest.TestCase):
         [L.CollectiveHingeLoss(knn), False, Tensor([0., 1.1666, 1.8333, 0.])],
         [L.CollectiveSquaredHingeLoss(knn), False, Tensor([0., 1.3611, 3.3611, 0.])],
         [L.CollectiveBinaryCrossEntropy(knn), True, Tensor([0.29248, 30.6898, 30.1898, 0.7924])],
-        # [L.CollectiveLogisticLoss(knn), False, Tensor([0.1520, 1.4564, 1.7914, -1.3436])]
-        # [L.CollectiveExponentialLoss(knn), False, Tensor([0.3498, 1.3920, 0.6748, -0.3673])]
+        [L.CollectiveLogisticLoss(knn), False, Tensor([0.3375, 1.5596, 2.2611, 0.5978])],
+        [L.CollectiveExponentialLoss(knn), False, Tensor([0.5134, 1.3956, 1.9477, 0.7165])]
     ]
 
     # Helpers
