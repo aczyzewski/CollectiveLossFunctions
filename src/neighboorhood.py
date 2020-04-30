@@ -17,7 +17,7 @@ class AbstractKNN:
         self.use_gpu = use_gpu
         self.metric = metric
         self.verbose = verbose
-        self.cache = {}
+        self.cache = None
         self.precompute = precompute
 
     def get(self, query: np.array, k: int, exclude_query: bool = True
@@ -60,9 +60,6 @@ class FaissKNN(AbstractKNN):
         if self.use_gpu:
             print('Warning: (faiss) GPU is not supported in current version.')
 
-        if self.precompute:
-            print('Warning: Precompute is not supported in current version.')
-
         self.data_x = self.data_x.astype('float32')
         self.data_y = self.data_y.astype('int32')
 
@@ -71,10 +68,23 @@ class FaissKNN(AbstractKNN):
         self.index = faiss.IndexFlatL2(num_attributes)
         self.index.add(self.data_x)
 
-    def get(self, query: np.array, exclude_query: bool = False
-            ) -> Tuple[np.array, np.array, np.array]:
-        """ Note: the query type should be float32 """
-        
+        if self.precompute:
+            self.precompute_results()
+
+    def get(self, query: np.array, exclude_query: bool = False,
+            use_cache: bool = True) -> Tuple[np.array, np.array, np.array]:
+        """ Returns calculated distances, indices, and classes of the nearest
+            neighboorhood of a given query. If the query is an integer and
+            self.compute parameter is True the function will use cached results
+
+            Note: the query type should be float32
+        """
+
+        if self.precompute and self.cache is not None and use_cache:
+            # If precompute is True, we assume that user will provide
+            # list of indicies instead of a vector of values
+            return [arr[query] for arr in self.cache]
+
         # Find K most similar instances in the input
         _k = self.k if not exclude_query else self.k + 1
         distances, indices = self.index.search(query, _k)
@@ -87,3 +97,9 @@ class FaissKNN(AbstractKNN):
         classes = self.data_y[tuple([indices])]
 
         return distances, indices, classes
+
+    def precompute_results(self, remove_data: bool = True) -> None:
+        """ Caches neighboorhood of any point in the dataset """
+        self.cache = self.get(self.data_x, exclude_query=True,
+                              use_cache=False)
+
