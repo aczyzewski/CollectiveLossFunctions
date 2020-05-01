@@ -1,5 +1,6 @@
 from typing import List, Tuple, Callable
 import numpy as np
+from torch import Tensor
 from torch.utils.data import TensorDataset, DataLoader
 from src.datasets import UCIDatabase
 
@@ -49,9 +50,8 @@ def load_dataset(name: str, preprocesing: Pipeline = None
     return x, y
 
 
-def convert_to_dataloader(x: np.array, y: np.array, indicies: bool = True,
-                          **kwargs) -> List[str]:
+def convert_to_dataloader(x: np.array, y: np.array, **kwargs) -> List[str]:
     """ Converts a given dataset into DataLoader object """
-    dataset = TensorDataset(np.arange(x.shape[0]), x, y) if indicies \
-        else TensorDataset(x, y)
+    idx, x, y = Tensor(np.arange(x.shape[0])), Tensor(x), Tensor(y)
+    dataset = TensorDataset(idx, x, y)
     return DataLoader(dataset, **kwargs)
