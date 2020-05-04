@@ -19,8 +19,11 @@ jupyter:
 
 ```python
 import sys
+import string
 import warnings
-from collections import defaultdict
+import asyncio
+from joblib import Parallel, delayed
+from typing import List, Any, Dict
 ```
 
 ```python
@@ -29,137 +32,101 @@ warnings.filterwarnings('ignore')
 ```
 
 ```python
+import umap
+import neptune
 import numpy as np
-from umap import UMAP
-
-import torch
+import pandas as pd
 from torch import nn
 from torch.optim import Adam
-from torch.utils.data import DataLoader, TensorDataset
-
-from sklearn.pipeline import Pipeline
-from sklearn.model_selection import train_test_split
-from sklearn.metrics import precision_score, recall_score, f1_score
+from torch.nn import Module
+from torch.utils.data import DataLoader
 ```
 
 ```python
-from src.datasets import UCIDatabase
-from src.losses import KNNHingeLoss, HingeLoss
+import src.datasets as datasets
+import src.losses as lossfunc
+import src.utils as utils
+import src.experiments as trainingloop
+from src.neighboorhood import FaissKNN
 from src.preprocessing import transform
-from src.experiments import run_training_loop
 from src.networks import CustomNeuralNetwork
 ```
 
+# Binary classification
+
 ```python
-datasets = UCIDatabase(output_directory='../datasets')
+# Parameters
+GLOBAL_PARAMS = {
+    'use_umap': False,
+    'batch_size': 32,
+    'output_type': 'binary'
+}
 ```
 
 ```python
-bin_classifiation_datasets = [
-    'Phishing Websites',
-    'Breast Cancer Wisconsin (Diagnostic)',
-    'Bank Marketing',
-    'Skin Segmentation',
-    'Adult'
-]
+EXPERIMENT_PARAMS = {
+    'learning_rate': [0.01],
+    'layers': [[12, 24, 2]],
+    'hidden_activations': ["relu"],
+    'output_activations': ["sigmoid"],
+    'epochs': [256],
+    'early_stopping': [32]
+}
 ```
 
 ```python
-# Define layers of NNs
-params_models_layers = [
-    [12, 16, 32],
-    [6, 16, 32, 54, 32, 16],
-    [4, 12, 128, 64, 64, 32, 48]
-]
-```
-
-```python
-# Define hidden activations
-params_hidden_activation = [
-    "sigmoid",
-    "relu",
-    "mish"
-]
-```
-
-```python
-# Other parameters
-
-# Learning
-batch_size = 1024
-learning_rate = 0.01
-max_epochs = 1
-
-# Data
-test_subset_size = 0.2
-val_subset_size = 0.2
-
-# Output
-results_output_path = 'results/008_experiment_results.csv'
-```
-
-```python
-results = []
-for dataset in bin_classifiation_datasets:
+# Define list o functions
+functions_type = trainingloop.LossFuncType.BASIC
+basic_functions = [
     
-    # Prepare data
-    x, y = datasets.get_by_name(dataset).load()
-    x, y = transform(x, y)
-    x = UMAP().fit_transform(x) 
+    # Basic functions
+    ['hinge_loss', lossfunc.HingeLoss(), False],
+    ['sq_hinge_loss', lossfunc.SquaredHingeLoss(), False],
+#     ['bce', lossfunc.BinaryCrossEntropy(), True],
+#     ['log_loss', lossfunc.HingeLoss(), False],
+#     ['exp_loss', lossfunc.HingeLoss(), False],
+
+]
+
+neptune.init('aczyzewski/clfbin')
+for function_name, criterion, std_range in basic_functions:
     
-    num_features = x.shape[1]
-    
-    # Split data into test/val/train
-    x, y = torch.tensor(x), torch.tensor(y)
-    train_x, test_x, train_y, test_y = train_test_split(x, y, test_size=test_subset_size)
-    train_x, val_x, train_y, val_y = train_test_split(train_x, train_y, test_size=val_subset_size)
+    # Base loss functions. Inputs: (pred, target)
+    for dataset_name in datasets.get_datasets('binary')[:1]:
         
-    # Convert subsets into DataLoaders
-    train_dataloader = DataLoader(TensorDataset(train_x, train_y), batch_size=batch_size)
-    val_dataloader = DataLoader(TensorDataset(val_x, val_y), batch_size=batch_size)
-    test_dataloader = DataLoader(TensorDataset(test_x, test_y), batch_size=batch_size)
+        simplified_dataset_name = datasets.simplify_dataset_name(dataset_name)        
+        
+        # Preprocess the data
+        x, y = datasets.load_dataset(dataset_name, transform, use_umap=USE_UMAP)
+        y[y == 0] = -1 if not std_range else 0
+        knn = FaissKNN(x, y, precompute=True)
+        
+        # Dataloaders
+        (train_x, train_y), (val_x, val_y), (test_x, test_y) = utils.split_data(x, y)
+        train_dataloader = datasets.convert_to_dataloader(train_x, train_y, batch_size=32)
+        valid_dataloader = datasets.convert_to_dataloader(val_x, val_y, batch_size=32)
+        
+        # Prepare an experiment
+        for PARAMS in utils.iterparams(EXPERIMENT_PARAMS):
+            
+            experiment_name = f'{simplified_dataset_name}_{function_name}'
+            ALL_PARAMS = {**PARAMS, **GLOBAL_PARAMS}
+            tags = [function_name, simplified_dataset_name, 'binary']
+            experiment = neptune.create_experiment(name=experiment_name, tags=tags, params=ALL_PARAMS,
+                                                   upload_source_files=['../src/losses/binary.py'])
+
+            # Parameters
+            layers = [x.shape[1]] + PARAMS['layers'] + [1]
+            model = CustomNeuralNetwork(layers, PARAMS['hidden_activations'], PARAMS['output_activations'])
+            optimizer = Adam(model.parameters(), lr=PARAMS['learning_rate'])
+
+
+            trainingloop.run(experiment_name, optimizer, criterion, model, train_dataloader,
+                         PARAMS['epochs'], valid_dataloader, early_stopping=PARAMS['early_stopping'], 
+                         neptune_logger=neptune, knn_use_indicies=True)
+
+            experiment.stop()
     
-    # Define criterions
-    params_criterions = [
-        (KNNHingeLoss(x, y), True),
-        (HingeLoss(), False)
-    ]
-
-    # Run the grid search
-    for model_configuration in params_models_layers:
-        for hidden_activation in params_hidden_activation:
-            for criterion, is_knn_loss in params_criterions:
-                
-                # Prepare the model
-                layers = [num_features] + model_configuration + [1]
-                model = CustomNeuralNetwork(layers, hidden_activation, "sigmoid")
-                    
-                # Define other hyper-parameters
-                optimizer = Adam(model.parameters(), lr=learning_rate)
-                model, train_loss, val_loss = run_training_loop(
-                    optimizer, criterion, model, train_dataloader, val_dataloader, epochs=max_epochs,
-                    collective_loss=is_knn_loss, use_wandb=False
-                )
-                
-                # Evaluate the model
-                metrics = defaultdict(list)
-                with torch.no_grad():
-                    for examples, labels in test_dataloader:
-                        predictions = model(examples) > 0.5
-                        metrics['precision'].append(precision_score(labels, predictions))
-                        metrics['recall'].append(recall_score(labels, predictions))
-                        metrics['f1'].append(f1_score(labels, predictions))
-                        
-                # Average metrics from all batches
-                for key in metrics.keys():
-                    metrics[key] = sum(metrics[key]) / len(metrics[key])
-
-                # Save results
-                results.append((dataset, train_loss, val_loss, model, model_configuration, hidden_activation, criterion.__name__, metrics))      
-```
-
-```python
-results
 ```
 
 ```python

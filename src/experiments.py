@@ -12,6 +12,7 @@ from torch.nn import Module
 from torch.optim import Optimizer
 from torch.utils.data import DataLoader
 
+
 # Custom aliases
 LossFunction = Callable[[Tensor, Tensor], Tensor]
 
@@ -99,7 +100,7 @@ def run(name: str, optimizer: Optimizer, criterion: LossFunction,
         ) -> Tuple[Module, List[float], List[float]]:
 
     """ Runs standard training loop.
-    
+
         Non-trivial arguments:
             neptune_logger: pass an neptune experiment object to track
                 the experiment using neptune.ai service
@@ -136,7 +137,7 @@ def run(name: str, optimizer: Optimizer, criterion: LossFunction,
 
         # Log train_loss
         if neptune_logger is not None:
-            neptune_logger.log_metric(f'{name}_train_loss', mean_train_loss)
+            neptune_logger.log_metric(f'train_loss', mean_train_loss)
 
         # Validation loop
         if valid_dataloader is not None:
@@ -153,7 +154,7 @@ def run(name: str, optimizer: Optimizer, criterion: LossFunction,
 
             # Log valid_loss
             if neptune_logger is not None:
-                neptune_logger.log_metric(f'{name}_valid_loss', 
+                neptune_logger.log_metric(f'valid_loss',
                                           mean_validation_loss)
 
             # Tracking current best loss (early-stopping)
