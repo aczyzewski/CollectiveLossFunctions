@@ -5,6 +5,7 @@ import numpy as np
 from torch import Tensor
 from functools import reduce
 
+EPSILON = 1e-9
 
 def mish(input):
     """ Applies the mish function element-wise:
@@ -26,7 +27,7 @@ def kl_divergence(predictions: Tensor, values: Tensor) -> Tensor:
         1-D tensor with KL-divergencies of neighborhoods of processed instances
 
     """
-    _kl_divergence = lambda p, q: torch.sum(p * torch.log(p/q))
+    _kl_divergence = lambda p, q: torch.sum(p * torch.log(p/q + EPSILON))
 
     output_vector = []
 
