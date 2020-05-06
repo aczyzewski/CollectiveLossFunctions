@@ -84,8 +84,8 @@ def validation_step(model: Module, criterion: LossFunction, inputs: Tensor,
 
         elif loss_type == LossFuncType.ENTR_R:
             inputs = indicies if knn_use_indicies else inputs
-            pred_class_dist = model.stored_output
-            loss = criterion(outputs, labels, inputs, pred_class_dist)
+            model_last_layer_distr = model.stored_output
+            loss = criterion(outputs, labels, inputs, model_last_layer_distr)
 
     return loss.item()
 

@@ -12,7 +12,7 @@ class TestNeighboorhood(unittest.TestCase):
         [1., 0., 1., 1., 1.],   # K = 3 (D = 3)
         [1., 0., 0., 0., 0.]    # K = 1 (D = 1)
     ])
-    x, y = example_dataset[:, :-1], example_dataset[:, -1]
+    x, y = example_dataset[:, :-1], example_dataset[:, -1].reshape(-1, 1)
 
     def test_knn_output(self):
         knn = FaissKNN(self.x, self.y, k=3)

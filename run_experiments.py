@@ -25,7 +25,6 @@ from src.networks import CustomNeuralNetwork
 
 warnings.filterwarnings('ignore')
 
-# Define list o functions
 
 loss_functions = {
     'hinge_loss': {
@@ -62,7 +61,8 @@ GLOBAL_PARAMS = {
     'batch_size': [32],
     'dataset': datasets.get_datasets('binary'),
     'function_type': [ftype.BASIC, ftype.ENTR_R, ftype.ENTR_W, ftype.CLF],
-    'function_name': list(loss_functions.keys())
+    'function_name': list(loss_functions.keys()),
+    'knn_k': [3]
 }
 
 EXPERIMENT_PARAMS = {
@@ -87,8 +87,8 @@ for G_PARAMS in utils.iterparams(GLOBAL_PARAMS):
     simplified_dataset_name = datasets.simplify_dataset_name(dataset_name)        
 
     # Preprocess the data
-    x, y = datasets.load_dataset(dataset_name, transform, use_umap=GLOBAL_PARAMS['use_umap'])
-    knn = FaissKNN(x, y, precompute=True)
+    x, y = datasets.load_dataset(dataset_name, transform, use_umap=G_PARAMS['use_umap'])
+    knn = FaissKNN(x, y, precompute=True, k=G_PARAMS['knn_k'])
     if function_name not in std_target_range:
         y[y == 0] = -1
 
@@ -125,7 +125,7 @@ for G_PARAMS in utils.iterparams(GLOBAL_PARAMS):
         # Gather all necessary values
         experiment_name = f'{simplified_dataset_name}_{function_name}_{function_type_name}'
         ALL_PARAMS = {**PARAMS, **G_PARAMS}
-        tags = [function_name, simplified_dataset_name, output_type, function_type_name]
+        tags = [function_name, simplified_dataset_name, output_type, function_type_name, 'test_2']
 
         # Register an experiment
         experiment = neptune.create_experiment(name=experiment_name, tags=tags, params=ALL_PARAMS,
