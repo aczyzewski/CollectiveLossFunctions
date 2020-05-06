@@ -23,6 +23,7 @@ pep8 = "*"
 pylint = "*"
 flake8 = "*"
 coverage = "*"
+neptune-client = "*"
 
 [requires]
 python_version = "3.7"
