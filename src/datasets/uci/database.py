@@ -69,7 +69,7 @@ class UCIDatabaseEntry():
                 (note: this function will create a new folder with the same name as
                  dataset to save the files in it)
         """
-
+        
         self.local_path = os.path.join(self.output_directory, self.name)
         revert_changes = False
 
@@ -94,11 +94,12 @@ class UCIDatabaseEntry():
             # Save each file on the disk
             for a in hyperlinks:
 
-                if a.text in url_blacklist:
+                if a.text.strip() in url_blacklist:
                     continue
 
                 # Retireve file url, name and content
                 relative_url = a.get('href')
+
                 url = urllib.parse.urljoin(dataset_directory, relative_url)
                 name = urllib.parse.unquote(os.path.basename(relative_url))
                 downloaded_file = requests.get(url, verify=self.verify_ssl)

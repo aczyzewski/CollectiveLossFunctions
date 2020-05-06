@@ -487,3 +487,12 @@ QSAR fish toxicity;https://archive.ics.uci.edu/ml/datasets/QSAR+fish+toxicity;Mu
 QSAR aquatic toxicity;https://archive.ics.uci.edu/ml/datasets/QSAR+aquatic+toxicity;Multivariate;Regression;Real;546;9;2019
 Human Activity Recognition from Continuous Ambient Sensor Data;https://archive.ics.uci.edu/ml/datasets/Human+Activity+Recognition+from+Continuous+Ambient+Sensor+Data;Multivariate$Sequential$Time-Series;Classification;Integer$Real;13956534;37;2019
 WISDM Smartphone and Smartwatch Activity and Biometrics Dataset;https://archive.ics.uci.edu/ml/datasets/WISDM+Smartphone+and+Smartwatch+Activity+and+Biometrics+Dataset+;Multivariate$Time-Series;Classification;Real;15630426;6;2019
+QSAR oral toxicity;https://archive.ics.uci.edu/ml/datasets/QSAR+oral+toxicity;Multivariate;Classification;;8992;1024;2019
+QSAR androgen receptor;https://archive.ics.uci.edu/ml/datasets/QSAR+androgen+receptor;Multivariate;Classification;;1687;1024;2019
+QSAR Bioconcentration classes dataset;https://archive.ics.uci.edu/ml/datasets/QSAR+Bioconcentration+classes+dataset;Multivariate;Classification$Regression;;779;14;2019
+QSAR fish bioconcentration factor (BCF);https://archive.ics.uci.edu/ml/datasets/QSAR+fish+bioconcentration+factor+%28BCF%29;Multivariate;Regression;Integer$Real;1056;7;2019
+A study of  Asian Religious and Biblical Texts;https://archive.ics.uci.edu/ml/datasets/A+study+of++Asian+Religious+and+Biblical+Texts;Multivariate$Text;Classification$Clustering;Integer;590;8265;2019
+Real-time Election Results: Portugal 2019;https://archive.ics.uci.edu/ml/datasets/Real-time+Election+Results%3A+Portugal+2019;Multivariate$Time-Series$Text;Regression;Integer$Real;21643;29;2019
+Bias correction of numerical prediction model temperature forecast;https://archive.ics.uci.edu/ml/datasets/Bias+correction+of+numerical+prediction+model+temperature+forecast;Multivariate;Regression;Real;7750;25;2020
+Bar Crawl: Detecting Heavy Drinking;https://archive.ics.uci.edu/ml/datasets/Bar+Crawl%3A+Detecting+Heavy+Drinking;Multivariate$Time-Series;Classification$Regression;Real;14057567;3;2020
+Kitsune Network Attack Dataset;https://archive.ics.uci.edu/ml/datasets/Kitsune+Network+Attack+Dataset;Multivariate$Sequential$Time-Series;Classification$Clustering$Causal-Discovery;Real;27170754;115;2019

@@ -7,7 +7,7 @@ from src.datasets import UCIDatabase
 # Custom aliases
 Pipeline = Callable[[np.array, np.array], Tuple[np.array, np.array]]
 
-DATABASE = UCIDatabase(output_directory='../datasets')
+DATABASE = UCIDatabase(output_directory='datasets')
 DATASETS = {
     'binary': [
         'Phishing Websites',

@@ -83,6 +83,7 @@ class FaissKNN(AbstractKNN):
         if self.precompute and self.cache is not None and use_cache:
             # If precompute is True, we assume that user will provide
             # list of indicies instead of a vector of values
+            query = query.astype('int')
             return [arr[query] for arr in self.cache]
 
         # Find K most similar instances in the input
