@@ -9,8 +9,8 @@ from sklearn.impute import SimpleImputer
 from sklearn.preprocessing import StandardScaler, OneHotEncoder
 
 
-def transform(x: pd.DataFrame, y: pd.DataFrame, use_umap: bool = False
-              ) -> pd.DataFrame:
+def transform(x: pd.DataFrame, y: pd.DataFrame, use_umap: bool = False,
+              **kwargs: int) -> pd.DataFrame:
     """ Converts input data """
 
     # Numeric features
@@ -40,7 +40,7 @@ def transform(x: pd.DataFrame, y: pd.DataFrame, use_umap: bool = False
     )
 
     x = preprocessor.fit_transform(x).astype('float32')
-    x = umap.UMAP().fit_transform(x) if use_umap else x
+    x = umap.UMAP().fit_transform(x, **kwargs) if use_umap else x
     y = y.to_numpy().reshape(-1, 1).astype('float32')
 
     return np.ascontiguousarray(x), np.ascontiguousarray(y)

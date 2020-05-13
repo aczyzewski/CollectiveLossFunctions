@@ -3,7 +3,6 @@ from typing import Callable, Union
 import torch
 import torch.nn.functional as F
 from torch import Tensor
-import numpy as np
 
 from src.functional import entropy, kl_divergence
 from src.neighboorhood import AbstractKNN
@@ -162,7 +161,7 @@ def EntropyRegularizedBinaryLoss(base_loss_function: LossFunction,
         assert kl_div_score.shape == target.shape, \
             'Invalid KL divergence output shape!'
 
-        # Sometimes the loss value is a bit lower than zero (e.g. 1e-10)    
+        # Sometimes the loss value is a bit lower than zero (e.g. 1e-10)
         regularized_loss = torch.max(Tensor([0.]), base_loss + kl_div_score)
         reduction_method = get_reduction_method(reduction)
 

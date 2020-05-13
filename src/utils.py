@@ -1,6 +1,5 @@
-from typing import List, Tuple, Callable, Union, Any
-from functools import reduce
-from collections import Counter
+from typing import List, Tuple, Callable, Union, Any, Dict
+from itertools import product
 
 import numpy as np
 import torch
@@ -103,13 +102,13 @@ def get_activation_by_name(name: str) -> Any:
     return methods[name]
 
 
-def convert_logtis_to_class_distribution(inputs: Tensor, no_classes: int) -> Tensor:
+def convert_logits_to_class_distribution(inputs: Tensor, n_classes: int) -> Tensor:
     """ Converts each of of a given tensor to probablility class distribution
 
         Example:
-            >>> no_classes = 4
+            >>> n_classes = 4
             >>> a = Tensor([[0, 1, 2, 3], [1, 1, 2, 2], [0, 0, 0, 3]])
-            >>> convert_tensor_to_class_distribution(a, no_classes)
+            >>> convert_tensor_to_class_distribution(a, n_classes)
             [[0.25, 0.25, 0.25, 0.25],
              [0.,   0.75, 0.25, 0.  ],
              [0.75, 0.    0.    0.25]]
@@ -117,31 +116,14 @@ def convert_logtis_to_class_distribution(inputs: Tensor, no_classes: int) -> Ten
     """
 
     # FIXME: This method is quite slow.
-    output = torch.zeros((inputs.shape[0], no_classes))
+    output = torch.zeros((inputs.shape[0], n_classes))
     for idx, row in enumerate(inputs):
         values, counts = torch.unique(row, return_counts=True)
         output[idx, values.int().numpy()] = counts.float()
     return output / inputs.shape[1]
 
 
-def iterparams(params):
+def iterparams(params: Dict[str, List[Any]]) -> Dict[str, Any]:
     """ Iterate over all possible combination of given parameters """
-
-    keys = list(params.keys())
-    counters = [len(param) for param in params.values()]
-    indices = [0] * len(keys)
-    num_loops = reduce(lambda x, y: x * y, counters)
-
-    for _ in range(num_loops):
-        for c_idx in range(len(indices) - 1, 0, -1):
-            if indices[c_idx] == len(params[keys[c_idx]]):
-                indices[c_idx] = 0
-                indices[c_idx - 1] += 1
-
-        attributes = []
-        for key, value, c_idx in zip(keys, params.values(), indices):
-            attributes.append((key, value[c_idx]))
-        yield dict(attributes)
-
-        indices[-1] += 1
-
+    for set in product(*params.values()):
+        yield dict(zip(params.keys(), set))

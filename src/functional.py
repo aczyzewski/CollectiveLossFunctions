@@ -18,13 +18,13 @@ def mish(input):
     return input * torch.tanh(F.softplus(input))
 
 
-def kl_divergence(predictions: Tensor, neighborhood: Tensor, no_classes: int = 2
+def kl_divergence(predictions: Tensor, neighborhood: Tensor, n_classes: int = 2
                   ) -> Tensor:
     """ Calculates the Kullback-Leibler divergence between two distributions
 
     Args:
         predictions: 2-D tensor with class probabilities of processed instances
-        neighborhood: 2-D tensor with class vector of nearest neigbors 
+        neighborhood: 2-D tensor with class vector of nearest neigbors
         of processed instances
 
     Returns:
@@ -33,7 +33,8 @@ def kl_divergence(predictions: Tensor, neighborhood: Tensor, no_classes: int = 2
     """
 
     _kl_divergence = lambda p, q: torch.sum(p * torch.log(p/(q + EPSILON) + EPSILON), dim=1)
-    neighborhood = utils.convert_logtis_to_class_distribution(neighborhood, 2)
+    neighborhood = utils.convert_logits_to_class_distribution(neighborhood,
+                                                              n_classes)
     return _kl_divergence(predictions, neighborhood).reshape(-1, 1)
 
 

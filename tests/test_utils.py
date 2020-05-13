@@ -2,11 +2,10 @@ import unittest
 import torch
 from torch import Tensor
 from src.utils import get_reduction_method, \
-    convert_logtis_to_class_distribution
+    convert_logits_to_class_distribution
 
 
 class TestUtils(unittest.TestCase):
-
 
     # Helpers
     def tensorsAlmostEqual(self, a: Tensor, b: Tensor, eps: float = 1e-4
@@ -23,11 +22,11 @@ class TestUtils(unittest.TestCase):
             torch.eq(get_reduction_method('none')(values), values).all().item()
         )
 
-    def test_convert_logtis_to_class_distribution(self):
+    def test_convert_logits_to_class_distribution(self):
 
         a = Tensor([[0, 1, 2, 3], [1, 1, 2, 2], [0, 0, 0, 3], [0, 0, 0, 0]])
         no_classes = 4
-        output = convert_logtis_to_class_distribution(a, no_classes)
+        output = convert_logits_to_class_distribution(a, no_classes)
         valid_output = Tensor(
             [[0.25, 0.25, 0.25, 0.25],
              [0.00, 0.50, 0.50, 0.00],
