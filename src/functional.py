@@ -5,6 +5,10 @@ import numpy as np
 from torch import Tensor
 from functools import reduce
 
+import src.utils as utils
+
+EPSILON = 1e-12
+
 
 def mish(input):
     """ Applies the mish function element-wise:
@@ -14,34 +18,29 @@ def mish(input):
     return input * torch.tanh(F.softplus(input))
 
 
-def kl_divergence(predictions: Tensor, values: Tensor) -> Tensor:
+def kl_divergence(predictions: Tensor, neighborhood: Tensor, n_classes: int = 2
+                  ) -> Tensor:
     """ Calculates the Kullback-Leibler divergence between two distributions
 
     Args:
-        predictions: 2-D tensor with class predictions of processed instances
-        values: 2-D tensor with class labels of nearest neigbors of processed
-        instances
+        predictions: 2-D tensor with class probabilities of processed instances
+        neighborhood: 2-D tensor with class vector of nearest neigbors
+        of processed instances
 
     Returns:
-        1-D tensor with KL-divergencies of neighborhoods of processed instances
+        2-D tensor with KL-divergencies of neighborhoods of processed instances
 
     """
-    _kl_divergence = lambda p, q: torch.sum(p * torch.log(p/q))
 
-    output_vector = []
-
-    # TODO: Should be implemented as tensor operation
-    for i, vector in enumerate(values):
-        vals, counts = torch.unique(vector, return_counts=True)
-        probablity_vector = counts * 1. / torch.sum(counts)
-        output_vector.append(_kl_divergence(predictions[i], probablity_vector))
-
-    return torch.Tensor(output_vector).reshape(-1, 1)
+    _kl_divergence = lambda p, q: torch.sum(p * torch.log(p/(q + EPSILON) + EPSILON), dim=1)
+    neighborhood = utils.convert_logits_to_class_distribution(neighborhood,
+                                                              n_classes)
+    return _kl_divergence(predictions, neighborhood).reshape(-1, 1)
 
 
 def entropy(values: Tensor, distances: Tensor = None, use_weights: bool = None) -> Tensor:
     """ Calculates entropy independently for each vector in a tensor
-        Returns results as 1-D tensor
+        Returns results as 2-D tensor
 
         Args:
              values: 2-D tensor with class labels of nearest neighbors of processed instances
@@ -49,7 +48,7 @@ def entropy(values: Tensor, distances: Tensor = None, use_weights: bool = None) 
              use_weights: if True use weighted entropy
 
         Returns:
-            1-D tensor with entropies of neighborhoods of processed instances
+            2-D tensor with entropies of neighborhoods of processed instances
     """
 
     _entropy = lambda vector: torch.abs(-1. * torch.sum(torch.Tensor(

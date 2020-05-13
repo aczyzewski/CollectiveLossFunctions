@@ -1,4 +1,6 @@
+import umap
 import pandas as pd
+import numpy as np
 from pandas.api.types import is_numeric_dtype, is_string_dtype
 from sklearn.pipeline import Pipeline
 from sklearn.compose import ColumnTransformer
@@ -7,7 +9,8 @@ from sklearn.impute import SimpleImputer
 from sklearn.preprocessing import StandardScaler, OneHotEncoder
 
 
-def transform(x: pd.DataFrame, y: pd.DataFrame) -> pd.DataFrame:
+def transform(x: pd.DataFrame, y: pd.DataFrame, use_umap: bool = False,
+              **kwargs: int) -> pd.DataFrame:
     """ Converts input data """
 
     # Numeric features
@@ -37,6 +40,7 @@ def transform(x: pd.DataFrame, y: pd.DataFrame) -> pd.DataFrame:
     )
 
     x = preprocessor.fit_transform(x).astype('float32')
+    x = umap.UMAP().fit_transform(x, **kwargs) if use_umap else x
     y = y.to_numpy().reshape(-1, 1).astype('float32')
 
-    return x, y
+    return np.ascontiguousarray(x), np.ascontiguousarray(y)

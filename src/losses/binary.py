@@ -1,6 +1,7 @@
 from typing import Callable, Union
 
 import torch
+import torch.nn.functional as F
 from torch import Tensor
 
 from src.functional import entropy, kl_divergence
@@ -116,8 +117,9 @@ def EntropyWeightedBinaryLoss(base_loss_function: LossFunction,
                                   ) -> Union[float, Tensor]:
 
         _, _, classes = knn.get(inputs.numpy(), exclude_query=True)
+        classes = Tensor(classes)
 
-        entropies = entropy(Tensor(classes))
+        entropies = entropy(classes)
         assert entropies.shape == target.shape, 'Invalid entropies shape!'
 
         base_loss = base_loss_function(prediction, target, reduction='none')
@@ -138,24 +140,32 @@ def EntropyRegularizedBinaryLoss(base_loss_function: LossFunction,
     """ Calculates pure loss function (`base_loss_fuction`) and
         adds Kullback-Leibler divergence of two distributions to the
         final loss """
+
     @lossfunction
     def entropy_regularized_bin_loss(prediction: Tensor, target: Tensor,
-                                     inputs: Tensor, pred_class_dist: Tensor,
+                                     inputs: Tensor, model_class_distribution: Tensor,
                                      reduction: str = 'mean'
                                      ) -> Union[float, Tensor]:
 
         base_loss = base_loss_function(prediction, target, reduction='none')
 
-        _, _, classes = knn.get(inputs.numpy(), exclude_query=True)
-        kl_div_score = kl_divergence(pred_class_dist, Tensor(classes))
+        # Convert stored layer output into probability distribution
+        model_class_distribution = F.softmax(model_class_distribution, dim=1)
 
+        # Get nearest classes
+        _, _, classes = knn.get(inputs.numpy(), exclude_query=True)
+        classes = Tensor(classes)
+
+        # Calculate KL-Divergence of calculated distributions
+        kl_div_score = kl_divergence(model_class_distribution, classes)
         assert kl_div_score.shape == target.shape, \
             'Invalid KL divergence output shape!'
 
-        reguralized_loss = base_loss + kl_div_score
-
+        # Sometimes the loss value is a bit lower than zero (e.g. 1e-10)
+        regularized_loss = torch.max(Tensor([0.]), base_loss + kl_div_score)
         reduction_method = get_reduction_method(reduction)
-        return reduction_method(reguralized_loss)
+
+        return reduction_method(regularized_loss)
 
     return entropy_regularized_bin_loss
 
@@ -171,7 +181,9 @@ def CollectiveHingeLoss(knn: AbstractKNN, alpha: float = 0.5) -> LossFunction:
 
         # Get and return average class
         _, _, classes = knn.get(inputs.numpy(), exclude_query=True)
-        avg_class = (Tensor(classes).sum(dim=1) / knn.k).reshape(-1, 1)
+        classes = Tensor(classes)
+
+        avg_class = (classes.sum(dim=1) / knn.k).reshape(-1, 1)
         assert avg_class.shape == target.shape, 'Invalid avg class shape!'
 
         loss = torch.max(
@@ -220,7 +232,9 @@ def CollectiveBinaryCrossEntropy(knn: AbstractKNN, alpha: float = 0.5
 
         # Get and return average class
         _, _, classes = knn.get(inputs.numpy(), exclude_query=True)
-        avg_class = (Tensor(classes).sum(dim=1) / knn.k).reshape(-1, 1)
+        classes = Tensor(classes)
+
+        avg_class = (classes.sum(dim=1) / knn.k).reshape(-1, 1)
         assert avg_class.shape == target.shape, 'Invalid avg class shape!'
 
         loss = (
@@ -250,7 +264,9 @@ def CollectiveLogisticLoss(knn: AbstractKNN, alpha: float = 0.5
 
         # Get and return average class
         _, _, classes = knn.get(inputs.numpy(), exclude_query=True)
-        avg_class = (Tensor(classes).sum(dim=1) / knn.k).reshape(-1, 1)
+        classes = Tensor(classes)
+
+        avg_class = (classes.sum(dim=1) / knn.k).reshape(-1, 1)
         assert avg_class.shape == target.shape, 'Invalid avg class shape!'
 
         cached_log = 1.4426950408889634     # = 1 / ln(2)
@@ -278,7 +294,9 @@ def CollectiveExponentialLoss(knn: AbstractKNN, alpha: float = 0.5,
 
         # Get and return average class
         _, _, classes = knn.get(inputs.numpy(), exclude_query=True)
-        avg_class = (Tensor(classes).sum(dim=1) / knn.k).reshape(-1, 1)
+        classes = Tensor(classes)
+
+        avg_class = (classes.sum(dim=1) / knn.k).reshape(-1, 1)
         assert avg_class.shape == target.shape, 'Invalid avg class shape!'
 
         loss = torch.exp(- beta * prediction * (target + alpha * avg_class))

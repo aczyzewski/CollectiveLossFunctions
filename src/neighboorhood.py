@@ -62,6 +62,8 @@ class FaissKNN(AbstractKNN):
 
         self.data_x = self.data_x.astype('float32')
         self.data_y = self.data_y.astype('int32')
+        assert len(self.data_y.shape) == 2 and self.data_y.shape[1] == 1, \
+            'Invalid Y data shape!'
 
         # Create an index
         num_columns, num_attributes = self.data_x.shape
@@ -83,6 +85,7 @@ class FaissKNN(AbstractKNN):
         if self.precompute and self.cache is not None and use_cache:
             # If precompute is True, we assume that user will provide
             # list of indicies instead of a vector of values
+            query = query.astype('int')
             return [arr[query] for arr in self.cache]
 
         # Find K most similar instances in the input
@@ -94,8 +97,7 @@ class FaissKNN(AbstractKNN):
             indices = indices[:, 1:]
 
         # Retrieve classes of the indicies
-        classes = self.data_y[tuple([indices])]
-
+        classes = self.data_y[tuple([indices])].squeeze(2)
         return distances, indices, classes
 
     def precompute_results(self, remove_data: bool = True) -> None:
