@@ -14,7 +14,7 @@ def lossfunction(func: LossFunction) -> LossFunction:
     def wrapper(prediction: Tensor, target: Tensor, *args, **kwargs
                 ) -> Union[float, Tensor]:
 
-        assert prediction.shape == target.shape, 'Invalid target or \
+        assert prediction.shape[0] == target.shape[0], 'Invalid target or \
             prediction shape!'
 
         reduction_method = kwargs.get('reduction', 'mean')
@@ -25,7 +25,7 @@ def lossfunction(func: LossFunction) -> LossFunction:
         assert torch.isnan(loss).sum() == 0, "Calculated loss \
             contains NaN values"
         assert (loss < 0).sum() == 0, "Negative loss function!"
-        
+
         reduction_method = get_reduction_method(reduction_method)
         return reduction_method(loss)
 

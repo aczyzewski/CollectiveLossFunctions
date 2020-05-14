@@ -20,7 +20,7 @@ class TestLosses(unittest.TestCase):
     # CLASSES = [0, 1, 1]
 
     x = example_dataset[:, :-1]
-    y = example_dataset[:, -1]
+    y = example_dataset[:, -1].reshape(-1, 1)
     knn = FaissKNN(x, y)
 
     # Simulate a batch of 4 examples (4 different combinations of targets)
