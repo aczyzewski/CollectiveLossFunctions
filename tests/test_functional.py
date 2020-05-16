@@ -2,8 +2,8 @@ import unittest
 import numpy as np
 import torch
 
-from scipy.stats import norm
-from src.functional import entropy, theil, gini, atkinson, kl_divergence
+from src.functional import entropy, theil, gini, atkinson, kl_divergence, \
+    scaled_variance
 
 
 class TestFunctionals(unittest.TestCase):
@@ -135,6 +135,12 @@ class TestFunctionals(unittest.TestCase):
     def test_atkinson_multiple_vectors(self):
         sample = torch.Tensor(np.array([[0, 0, 0, 0], [1, 1, 1, 1]]))
         self.assertTrue(torch.all(torch.eq(atkinson(sample), torch.Tensor([0., 0.]))))
+
+    def test_scaled_variance(self):
+        mean = torch.Tensor([60.])
+        values = torch.Tensor([[20, 40, 80, 100]])
+        result = scaled_variance(mean, values)
+        self.assertEqual(result, torch.Tensor([111.]))
 
 
 if __name__ == '__main__':
