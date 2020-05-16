@@ -8,7 +8,7 @@ import src.losses as L
 from src.neighboorhood import FaissKNN
 
 
-class TestLosses(unittest.TestCase):
+class TestBinaryLosses(unittest.TestCase):
 
     example_dataset = np.array([
         [0., 1., 0., 1., 1.],   # K = 2 (D = 2)

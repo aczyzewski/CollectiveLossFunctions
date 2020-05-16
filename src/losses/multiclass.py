@@ -54,10 +54,7 @@ def WeightedCrossEntropy(knn: AbstractKNN) -> LossFunction:
         # Retrieve nearest points and their calsses
         _, _, nn_classes = knn.get(inputs.numpy(), exclude_query=True)
         nn_classes = Tensor(nn_classes)
-
-        nn_class_disribution = convert_logits_to_class_distribution(nn_classes,
-                                                                    n_classes)
-        nn_class_entropy = entropy(nn_class_disribution)
+        nn_class_entropy = entropy(nn_classes)
 
         # Convert target vector into probabilty distribution
         target = convert_logits_to_class_distribution(target, n_classes)
@@ -65,9 +62,8 @@ def WeightedCrossEntropy(knn: AbstractKNN) -> LossFunction:
         # Apply softmax on model output
         prediction = logsoftmax(prediction)
 
-        # Calculate loss
-        loss = - torch.sum(torch.exp(-nn_class_entropy) * target * prediction,
-                           dim=1).reshape(-1, 1)
+        loss = (-torch.sum(target * prediction, dim=1).reshape(-1, 1)
+                * torch.exp(-nn_class_entropy))
 
         reduction_method = get_reduction_method(reduction)
         return reduction_method(loss)
@@ -92,13 +88,13 @@ def RegularizedCrossEntropy(knn: AbstractKNN) -> LossFunction:
         target = convert_logits_to_class_distribution(target, n_classes)
 
         # Calcuate KL-Divergence
-        prediction = softmax(prediction)
+        prediction = softmax(prediction, dim=1)
         kl_divergence_score = kl_divergence(prediction, nn_classes, n_classes)
         prediction = torch.log(prediction)
 
         # Calculate loss
-        loss = - torch.sum(-kl_divergence_score + target * prediction,
-                           dim=1).reshape(-1, 1)
+        loss = (-torch.sum(target * prediction, dim=1).reshape(-1, 1)
+                + kl_divergence_score)
 
         reduction_method = get_reduction_method(reduction)
         return reduction_method(loss)
@@ -130,11 +126,11 @@ def CollectiveCrossEntropy(knn: AbstractKNN, alpha: float = 0.5
         # Apply softmax on model output
         prediction = logsoftmax(prediction)
 
-        # Calculate loss
         loss = - torch.sum(target * prediction
                            + alpha * nn_class_disribution * prediction,
                            dim=1).reshape(-1, 1)
 
         reduction_method = get_reduction_method(reduction)
         return reduction_method(loss)
+
     return collective_cross_entropy
