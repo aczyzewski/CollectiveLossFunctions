@@ -74,6 +74,11 @@ def entropy(values: Tensor, distances: Tensor = None, use_weights: bool = None) 
     return torch.Tensor(output_vector).reshape(-1, 1)
 
 
+def scaled_variance(mean: Tensor, values: Tensor) -> Tensor:
+    """ Calculates scaled variance if given values """
+    return torch.sum(torch.pow((mean - values), 2) / values, dim=1).reshape(-1, 1)
+
+
 def theil(values: Tensor) -> Tensor:
     """ Computes the Theil index of the inequality of distribution 
         (https://en.wikipedia.org/wiki/Theil_index)
