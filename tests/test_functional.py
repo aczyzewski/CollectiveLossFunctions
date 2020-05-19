@@ -3,7 +3,7 @@ import numpy as np
 import torch
 
 from src.functional import entropy, theil, gini, atkinson, kl_divergence, \
-    scaled_variance
+    scaled_variance, normalize
 
 
 class TestFunctionals(unittest.TestCase):
@@ -141,6 +141,11 @@ class TestFunctionals(unittest.TestCase):
         values = torch.Tensor([[20, 40, 80, 100]])
         result = scaled_variance(mean, values)
         self.assertEqual(result, torch.Tensor([111.]))
+
+    def test_normalize(self):
+        values = torch.Tensor([[1, 2, 3, 4, 5]])
+        result = normalize(values)
+        self.assertTrue(torch.all(torch.eq(result, torch.Tensor([[0, .25, .5, .75, 1]]))))
 
 
 if __name__ == '__main__':

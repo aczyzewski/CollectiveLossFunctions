@@ -6,7 +6,7 @@ from torch import Tensor
 from src.neighboorhood import AbstractKNN
 from src.utils import get_reduction_method
 from src.decorators import lossfunction
-from src.functional import scaled_variance
+from src.functional import scaled_variance, normalize
 
 # Type aliases
 LossFunction = Callable[[Tensor, Tensor], Tensor]
@@ -78,9 +78,9 @@ def VarianceWeightedMAE(knn: AbstractKNN) -> LossFunction:
 
         # Average target value in the neighborhood
         _, _, values = knn.get(inputs.numpy(), exclude_query=True)
-        variance = scaled_variance(target, Tensor(values)) / knn.k
+        variance = normalize(scaled_variance(target, Tensor(values)) / knn.k)
 
-        # Caculate loss
+        # Calculate loss
         base_loss = mae(prediction, target, reduction='none')
         loss = base_loss * torch.exp(-variance)
         reduction_method = get_reduction_method(reduction)
