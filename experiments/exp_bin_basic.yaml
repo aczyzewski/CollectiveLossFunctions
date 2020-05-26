@@ -1,0 +1,35 @@
+# VERSION: 1.0
+DATA:
+  PROBLEM: 'binary'
+  USE_UMAP: True
+  BATCH_SIZE: 512000
+  DATASET: [
+    'Phishing Websites',
+    'Breast Cancer Wisconsin (Diagnostic)',
+    'Bank Marketing',
+    'Adult',
+    'Skin Segmentation'
+  ]
+KNN:
+  K: null
+EXPERIMENT:
+  FUNCTION_TYPE: 'basic'
+  FUNCTION_NAME: [
+    'bce',
+    'hinge_loss', 
+    'sq_hinge_loss', 
+    'log_loss', 
+    'exp_loss'
+  ]
+  LEARNING_RATE: [0.001, 0.05, 0.01]
+  LAYERS: [
+    [200],
+    [200, 200],
+    [200, 200, 200],
+    [200, 200, 200, 200],
+    [200, 200, 200, 200, 200]
+  ]
+  HIDDEN_ACTIVATIONS: 'relu'
+  OUTPUT_ACTIVATIONS: ['tanh', 'sigmoid']
+  EPOCHS: 2048
+  EARLY_STOPPING: 64
