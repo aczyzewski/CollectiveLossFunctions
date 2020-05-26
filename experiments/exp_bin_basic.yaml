@@ -11,7 +11,7 @@ DATA:
     'Skin Segmentation'
   ]
 KNN:
-  K: null
+  K: 0
 EXPERIMENT:
   FUNCTION_TYPE: 'basic'
   FUNCTION_NAME: [

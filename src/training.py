@@ -166,7 +166,7 @@ def run(name: str, optimizer: Optimizer, criterion: LossFunction,
 
     # Overwrite current model if return_best_model is set to True
     if return_best_model and best_model is not None:
-        model.load_state_dict(best_model)
+        model.load_state_dict(torch.load(best_model))
 
     # Save the model on the disk/W&B
     if not os.path.isdir(output_directory):

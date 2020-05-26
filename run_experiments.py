@@ -67,7 +67,7 @@ def run_experiments(args: argparse.Namespace,
         for knn_params in utils.iterparams(knn_yaml_params):
 
             knn = None
-            if knn_params.K is not None:
+            if knn_params.K is not None and knn_params.K > 0:
                 train_val_x = np.concatenate((train_x, val_x), axis=0)
                 train_val_y = np.concatenate((train_y, val_y), axis=0)
                 knn = FaissKNN(train_val_x, train_val_y,
@@ -89,6 +89,7 @@ def run_experiments(args: argparse.Namespace,
 
                 criterion_name = exp_params.FUNCTION_NAME
                 criterion_type = helpers.LossFuncType.from_string(exp_params.FUNCTION_TYPE)
+                n_layers = len(exp_params.LAYERS)
                 _debug(f'Criterion: {criterion_name} (type: {criterion_type})')
 
                 if criterion_type == ftype.BASIC:
@@ -101,6 +102,7 @@ def run_experiments(args: argparse.Namespace,
                     hinge_target_range, base_loss = helpers.get_loss_function(
                         criterion_name, ftype.BASIC)
                     criterion = lossfunc.EntropyRegularizedBinaryLoss(base_loss(), knn)
+                    n_layers -= 1
 
                 elif criterion_type == ftype.ENTR_W:
                     assert knn is not None, 'kNN wrapper is not initialized!'
@@ -141,10 +143,12 @@ def run_experiments(args: argparse.Namespace,
                 _debug(f'Experiment name: {experiment_name}')
 
                 # Set-up neptue.ai experiment
+                experiment = None
                 if args.useneptune:
                     tags = [exp_params.FUNCTION_NAME, unified_dataset_name, data_params.PROBLEM,
                             exp_params.FUNCTION_TYPE, exp_params.OUTPUT_ACTIVATIONS]
 
+                    all_params['N_LAYERS'] = n_layers
                     experiment = neptune.create_experiment(
                         name=experiment_name, tags=tags, params=all_params,
                         upload_source_files=[args.config, 'src/losses/*.py', __file__])
