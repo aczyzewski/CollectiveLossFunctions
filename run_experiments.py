@@ -1,23 +1,17 @@
-import sys
-import string
 import warnings
-import asyncio
-from joblib import Parallel, delayed
-from typing import List, Any, Dict
+import argparse
 
-import umap
 import neptune
 import numpy as np
-import pandas as pd
-from torch import nn
+from torch import Tensor
 from torch.optim import Adam
-from torch.nn import Module
-from torch.utils.data import DataLoader
 
 import src.datasets as datasets
 import src.losses as lossfunc
 import src.utils as utils
-import src.experiments as trainingloop
+import src.experiments as helpers
+import src.training as trainingloop
+
 from src.experiments import LossFuncType as ftype
 from src.neighboorhood import FaissKNN
 from src.preprocessing import transform
@@ -26,120 +20,172 @@ from src.networks import CustomNeuralNetwork
 warnings.filterwarnings('ignore')
 
 
-loss_functions = {
-    'hinge_loss': {
-        ftype.BASIC: lossfunc.HingeLoss,
-        ftype.CLF: lossfunc.CollectiveHingeLoss
-     },
+def parse_arguments() -> argparse.Namespace:
+    """ Handles CLI arguments """
 
-    'sq_hinge_loss': {
-        ftype.BASIC: lossfunc.SquaredHingeLoss,
-        ftype.CLF: lossfunc.CollectiveSquaredHingeLoss
-     },
+    parser = argparse.ArgumentParser()
+    parser.add_argument('config', help='Path to config (.yaml) file.')
+    parser.add_argument('-d', '--debug', help='Enable debug mode.',
+                        action='store_true')
+    parser.add_argument('-v', '--verbose', help='Enable print statements.',
+                        action='store_true')
+    parser.add_argument('-o', '--output', help='Output path.',
+                        default='results')
+    parser.add_argument('-nn', '--noneptune', dest='useneptune', default=True,
+                        action='store_false', help='Disable neptune.ai logger.')
+    return parser.parse_args()
 
-    'bce': {
-        ftype.BASIC: lossfunc.BinaryCrossEntropy,
-        ftype.CLF: lossfunc.CollectiveBinaryCrossEntropy
-     },
 
-    'log_loss': {
-        ftype.BASIC: lossfunc.LogisticLoss,
-        ftype.CLF: lossfunc.CollectiveLogisticLoss
-     },
+def run_experiments(args: argparse.Namespace,
+                    neptuneai_project_id: str = 'clfmsc2020/experiments'
+                    ) -> None:
+    """ Runs experiments """
 
-    'exp_loss': {
-        ftype.BASIC: lossfunc.ExponentialLoss,
-        ftype.CLF: lossfunc.CollectiveExponentialLoss
-     }
-}    
+    def _debug(text: str) -> None:
+        """ Prints statemets only if args.debug or arg.verbose
+            flag is set """
+        if args.debug or args.verbose:
+            print(f'[INFO] {text}')
 
-std_target_range = set(['bce'])
+    if args.useneptune:
+        _debug('Neptune.AI enabled.')
+        neptune.init(neptuneai_project_id)
 
-# Parameters
-GLOBAL_PARAMS = {
-    'use_umap': [False],
-    'batch_size': [32],
-    'dataset': datasets.get_datasets('binary'),
-    'function_type': [ftype.BASIC, ftype.ENTR_R, ftype.ENTR_W, ftype.CLF],
-    'function_name': list(loss_functions.keys()),
-    'knn_k': [3]
-}
+    _debug(f'Config file path: {args.config}')
+    data_yaml_params, knn_yaml_params, exp_yaml_params = \
+        helpers.load_config_file(args.config)
 
-EXPERIMENT_PARAMS = {
-    'learning_rate': [0.01],
-    'layers': [[12, 24, 2]],
-    'hidden_activations': ["relu"],
-    'output_activations': ["sigmoid"],
-    'epochs': [256],
-    'early_stopping': [32]
-}
+    # -- LEVEL 0: CACHE DATASET
+    for data_params in utils.iterparams(data_yaml_params):
 
-neptune.init('clfmsc2020/experiments')
+        x, y = datasets.load_dataset(data_params.DATASET, transform,
+                                     use_umap=data_params.USE_UMAP)
+        (train_x, train_y), (val_x, val_y), (test_x, test_y) = utils.split_data(x, y)
+        _debug(f'Dataset: {data_params.DATASET}\n')
 
-for G_PARAMS in utils.iterparams(GLOBAL_PARAMS):
-    
-    output_type = 'binary'
-    function_type = G_PARAMS['function_type']
-    function_type_name = function_type.name.lower()
-    function_name = G_PARAMS['function_name']
-    dataset_name = G_PARAMS['dataset']
+        # -- LEVEL 1: CACHE KNN
+        for knn_params in utils.iterparams(knn_yaml_params):
 
-    simplified_dataset_name = datasets.simplify_dataset_name(dataset_name)        
+            knn = None
+            if knn_params.K is not None and knn_params.K > 0:
+                train_val_x = np.concatenate((train_x, val_x), axis=0)
+                train_val_y = np.concatenate((train_y, val_y), axis=0)
+                knn = FaissKNN(train_val_x, train_val_y,
+                               precompute=True, k=knn_params.K)
+                _debug(f'kNN wrapper initialized (k = {knn_params.K}).\n')
 
-    # Preprocess the data
-    x, y = datasets.load_dataset(dataset_name, transform, use_umap=G_PARAMS['use_umap'])
-    knn = FaissKNN(x, y, precompute=True, k=G_PARAMS['knn_k'])
-    if function_name not in std_target_range:
-        y[y == 0] = -1
+            # -- LEVEL 2: RUN EXPERIMENTS
+            for exp_params in utils.iterparams(exp_yaml_params):
 
-    # Dataloaders
-    (train_x, train_y), (val_x, val_y), (test_x, test_y) = utils.split_data(x, y)
-    train_dataloader = datasets.convert_to_dataloader(train_x, train_y, batch_size=G_PARAMS['batch_size'])
-    valid_dataloader = datasets.convert_to_dataloader(val_x, val_y, batch_size=G_PARAMS['batch_size'])
-    
-    # Initialize criterion
-    criterion = None
+                # EXCEPTIONS
+                if exp_params.FUNCTION_NAME == 'bce' and \
+                   exp_params.OUTPUT_ACTIVATIONS == 'tanh':
+                    _debug('An exception has occured (BCE + TanH)')
+                    continue
 
-    # Initialize criterion
-    if function_type == ftype.BASIC:
-        criterion = loss_functions[function_name][function_type]()
+                # Criterion
+                criterion = None
+                hinge_target_range = False
 
-    elif function_type == ftype.ENTR_R:
-        base_criterion = loss_functions[function_name][ftype.BASIC]()
-        criterion = lossfunc.EntropyRegularizedBinaryLoss(base_criterion, knn)
+                criterion_name = exp_params.FUNCTION_NAME
+                criterion_type = helpers.LossFuncType.from_string(exp_params.FUNCTION_TYPE)
+                n_layers = len(exp_params.LAYERS)
+                _debug(f'Criterion: {criterion_name} (type: {criterion_type})')
 
-    elif function_type == ftype.ENTR_W:
-        base_criterion = loss_functions[function_name][ftype.BASIC]()
-        criterion = lossfunc.EntropyWeightedBinaryLoss(base_criterion, knn)
+                if criterion_type == ftype.BASIC:
+                    hinge_target_range, loss_function = helpers.get_loss_function(
+                        criterion_name, criterion_type)
+                    criterion = loss_function()
 
-    elif function_type == ftype.CLF:
-        cfunction = loss_functions[function_name][function_type]
-        criterion = cfunction(knn, 0.5)  # Fixed parameters (alpha, beta)
+                elif criterion_type == ftype.ENTR_R:
+                    assert knn is not None, 'kNN wrapper is not initialized!'
+                    hinge_target_range, base_loss = helpers.get_loss_function(
+                        criterion_name, ftype.BASIC)
+                    criterion = lossfunc.EntropyRegularizedBinaryLoss(base_loss(), knn)
+                    n_layers -= 1
 
-    else:
-        raise Exception('Invalid function type!')
+                elif criterion_type == ftype.ENTR_W:
+                    assert knn is not None, 'kNN wrapper is not initialized!'
+                    hinge_target_range, base_loss = helpers.get_loss_function(
+                        criterion_name, ftype.BASIC)
+                    criterion = lossfunc.EntropyWeightedBinaryLoss(base_loss(), knn)
 
-    # Start experiments
-    for PARAMS in utils.iterparams(EXPERIMENT_PARAMS):
+                elif criterion_type == ftype.CLF:
+                    assert knn is not None, 'kNN wrapper is not initialized!'
+                    hinge_target_range, loss_function = helpers.get_loss_function(
+                        criterion_name, ftype.CLF)
+                    criterion = loss_function(knn, 0.5)  # FIXME: Fixed params (alpha, beta)
 
-        # Gather all necessary values
-        experiment_name = f'{simplified_dataset_name}_{function_name}_{function_type_name}'
-        ALL_PARAMS = {**PARAMS, **G_PARAMS}
-        tags = [function_name, simplified_dataset_name, output_type, function_type_name, 'test_2']
+                assert criterion is not None, 'Criterion is not initialized!'
 
-        # Register an experiment
-        experiment = neptune.create_experiment(name=experiment_name, tags=tags, params=ALL_PARAMS,
-                                               upload_source_files=['src/losses/binary.py',
-                                                                    __file__])
+                # Change target range
+                target_train_y = np.copy(train_y)
+                target_val_y = np.copy(val_y)
 
-        # Configure modules
-        layers = [x.shape[1]] + PARAMS['layers'] + [1]
-        model = CustomNeuralNetwork(layers, PARAMS['hidden_activations'], PARAMS['output_activations'])
-        optimizer = Adam(model.parameters(), lr=PARAMS['learning_rate'])
+                if hinge_target_range:
+                    _debug('Negative class: 0 -> -1')
+                    target_train_y[train_y == 0] = -1
+                    target_val_y[val_y == 0] = -1
 
-        # Run an experiment
-        trainingloop.run(experiment_name, optimizer, criterion, model, train_dataloader,
-                     PARAMS['epochs'], valid_dataloader, early_stopping=PARAMS['early_stopping'], 
-                     neptune_logger=neptune, knn_use_indicies=True, loss_type=function_type)
+                # Convert the subsets into DataLoaders
+                train_dataloader = datasets.convert_to_dataloader(
+                    train_x, target_train_y, batch_size=data_params.BATCH_SIZE)
 
-        experiment.stop()
+                valid_dataloader = datasets.convert_to_dataloader(
+                    val_x, target_val_y, batch_size=data_params.BATCH_SIZE)
+
+                # Prepare the experiment
+                all_params = {**data_params, **knn_params, **exp_params}
+                _debug(f'Params: \n {all_params}')
+
+                unified_dataset_name = datasets.simplify_dataset_name(data_params.DATASET)
+                experiment_name = f'{unified_dataset_name}_{exp_params.FUNCTION_NAME}_{exp_params.FUNCTION_TYPE}'
+                _debug(f'Experiment name: {experiment_name}')
+
+                # Set-up neptue.ai experiment
+                experiment = None
+                if args.useneptune:
+                    tags = [exp_params.FUNCTION_NAME, unified_dataset_name, data_params.PROBLEM,
+                            exp_params.FUNCTION_TYPE, exp_params.OUTPUT_ACTIVATIONS]
+
+                    all_params['N_LAYERS'] = n_layers
+                    experiment = neptune.create_experiment(
+                        name=experiment_name, tags=tags, params=all_params,
+                        upload_source_files=[args.config, 'src/losses/*.py', __file__])
+
+                # Configure modules
+                input_dim = x.shape[1]
+                layers = [input_dim] + exp_params.LAYERS + [1]
+
+                model = CustomNeuralNetwork(layers, exp_params.HIDDEN_ACTIVATIONS,
+                                            exp_params.OUTPUT_ACTIVATIONS)
+                optimizer = Adam(model.parameters(), lr=exp_params.LEARNING_RATE)
+
+                # Run an experiment
+                _debug('Starting the training ...')
+                logger = neptune if args.useneptune else None
+                model, training_loss_history, validation_loss_history = \
+                    trainingloop.run(experiment_name, optimizer, criterion, model,
+                                     train_dataloader, exp_params.EPOCHS, valid_dataloader,
+                                     early_stopping=exp_params.EARLY_STOPPING,
+                                     neptune_logger=logger, knn_use_indicies=True,
+                                     loss_type=criterion_type)
+
+                # Evaluate the model
+                metrics = trainingloop.evaluate_binary(
+                    model, Tensor(test_x), Tensor(test_y))
+                _debug(f'Done! Evaluation results: \n{metrics}\n')
+
+                if args.useneptune:
+                    for metric, value in metrics.items():
+                        neptune.log_metric(metric, value)
+                    experiment.stop()
+
+                # TODO: Save the output on the disk (args.output)
+
+
+if __name__ == '__main__':
+    args = parse_arguments()
+    project_id = 'clfmsc2020/experiments' if not args.debug else \
+        'aczyzewski/clfdebug'
+    run_experiments(args, project_id)

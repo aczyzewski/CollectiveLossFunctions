@@ -9,6 +9,17 @@ from torch import nn, Tensor
 from .mish import Mish
 
 
+class dotdict(dict):
+    """ dot.notation access to dictionary attributes """
+    def __getattr__(self, key: Any) -> Any:
+        if key in self.keys():
+            return self.get(key)
+        else:
+            raise KeyError(key)
+    __setattr__ = dict.__setitem__
+    __delattr__ = dict.__delitem__
+
+
 def split_data(x: np.array, y: np.array, test_size: float = 0.2,
                val_size: float = 0.2, random_state: int = None
                ) -> List[Tuple[np.array]]:
@@ -126,4 +137,4 @@ def convert_logits_to_class_distribution(inputs: Tensor, n_classes: int) -> Tens
 def iterparams(params: Dict[str, List[Any]]) -> Dict[str, Any]:
     """ Iterate over all possible combination of given parameters """
     for set in product(*params.values()):
-        yield dict(zip(params.keys(), set))
+        yield dotdict(zip(params.keys(), set))
