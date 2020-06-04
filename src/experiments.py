@@ -79,9 +79,9 @@ def get_loss_function(fname: str, ftype: Union[LossFuncType, str]
         ftype = LossFuncType.from_string(ftype)
 
     extended_target_range = fname not in _std_range_funcs
-    functon = _str_func_mapping[fname][ftype]
+    function = _str_func_mapping[fname][ftype]
 
-    return extended_target_range, functon
+    return extended_target_range, function
 
 
 def load_config_file(path: str) -> Tuple[dict, dict, dict]:

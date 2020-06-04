@@ -37,7 +37,7 @@ class TrainingTests(unittest.TestCase):
 
         # Define inputs
         inputs = Tensor([[-3], [-1], [1], [3]])
-        targets = Tensor([[-1], [-1], [1], [1]])
+        targets = Tensor([[0], [0], [1], [1]])
         results = training.evaluate_binary(model, inputs, targets)
 
         self.assertEqual(results['precision'], 1.0)
