@@ -6,21 +6,23 @@ DATA:
   DATASET: [
     'Breast Cancer Wisconsin (Diagnostic)'
   ]
+  TEST_SIZE: 0.4
+  VAL_SIZE: 0.2
 KNN:
   K: 3                            
 EXPERIMENT:
   FUNCTION_TYPE: [
     'basic', 
-    'entr_r', 
-    'entr_w', 
-    'collective'
+#    'entr_r',
+#    'entr_w',
+#    'collective'
   ]
   FUNCTION_NAME: [
     'hinge_loss', 
-    'sq_hinge_loss', 
-    'bce', 
-    'log_loss', 
-    'exp_loss'
+#    'sq_hinge_loss',
+#    'bce',
+#    'log_loss',
+#    'exp_loss'
   ]
   LEARNING_RATE: 0.001
   LAYERS: [[200, 2]]
@@ -28,3 +30,4 @@ EXPERIMENT:
   OUTPUT_ACTIVATIONS: 'sigmoid'
   EPOCHS: 1
   EARLY_STOPPING: 1
+  EVAL: null

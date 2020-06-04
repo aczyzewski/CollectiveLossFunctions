@@ -1,0 +1,31 @@
+# VERSION: 1.0
+DATA:
+  PROBLEM: 'binary'
+  USE_UMAP: False
+  BATCH_SIZE: 100
+  DATASET: 'two_spirals'
+  TEST_SIZE: 0.4
+  VAL_SIZE: 0.2
+KNN:
+  K: 3
+EXPERIMENT:
+  FUNCTION_NAME: [
+    'bce',
+  ]
+  FUNCTION_TYPE: [
+    'basic',
+    'entr_w',
+    'entr_r',
+    'collective'
+  ]
+  LEARNING_RATE: 0.0003
+  LAYERS: [
+    [100],
+    [100, 100],
+    [100, 100, 100]
+  ]
+  HIDDEN_ACTIVATIONS: 'relu'
+  OUTPUT_ACTIVATIONS: 'sigmoid'
+  EPOCHS: 10000
+  EARLY_STOPPING: null
+  EVAL: 100
