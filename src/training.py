@@ -10,7 +10,8 @@ from torch import Tensor
 from torch.nn import Module
 from torch.optim import Optimizer
 from torch.utils.data import DataLoader
-from sklearn.metrics import precision_score, recall_score
+from sklearn.metrics import precision_score, recall_score, accuracy_score, \
+    f1_score
 
 from src.experiments import LossFuncType
 
@@ -20,9 +21,9 @@ Metric = Callable[[np.ndarray, np.ndarray], float]
 
 
 def training_step(model: Module, criterion: LossFunction, optimizer: Optimizer,
-                  inputs: Tensor, indicies: Tensor, labels: Tensor,
+                  inputs: Tensor, indices: Tensor, labels: Tensor,
                   loss_type: LossFuncType = LossFuncType.BASIC,
-                  knn_use_indicies: bool = False) -> float:
+                  knn_use_indices: bool = False) -> float:
     """ Performs single train step. This function should be compatible
         with any loss function type.
 
@@ -39,11 +40,11 @@ def training_step(model: Module, criterion: LossFunction, optimizer: Optimizer,
         loss = criterion(outputs, labels)
 
     elif loss_type in [LossFuncType.ENTR_W, LossFuncType.CLF]:
-        inputs = indicies if knn_use_indicies else inputs
+        inputs = indices if knn_use_indices else inputs
         loss = criterion(outputs, labels, inputs)
 
     elif loss_type == LossFuncType.ENTR_R:
-        inputs = indicies if knn_use_indicies else inputs
+        inputs = indices if knn_use_indices else inputs
         pred_class_dist = model.stored_output
         loss = criterion(outputs, labels, inputs, pred_class_dist)
 
@@ -56,7 +57,7 @@ def training_step(model: Module, criterion: LossFunction, optimizer: Optimizer,
 def validation_step(model: Module, criterion: LossFunction, inputs: Tensor,
                     indicies: Tensor, labels: Tensor,
                     loss_type: LossFuncType = LossFuncType.BASIC,
-                    knn_use_indicies: bool = False) -> float:
+                    knn_use_indices: bool = False) -> float:
     """ Forward-propagation without calculating gradients. This function
         should be compatible with any loss function type.
 
@@ -73,11 +74,11 @@ def validation_step(model: Module, criterion: LossFunction, inputs: Tensor,
             loss = criterion(outputs, labels)
 
         elif loss_type in [LossFuncType.ENTR_W, LossFuncType.CLF]:
-            inputs = indicies if knn_use_indicies else inputs
+            inputs = indicies if knn_use_indices else inputs
             loss = criterion(outputs, labels, inputs)
 
         elif loss_type == LossFuncType.ENTR_R:
-            inputs = indicies if knn_use_indicies else inputs
+            inputs = indicies if knn_use_indices else inputs
             model_last_layer_distr = model.stored_output
             loss = criterion(outputs, labels, inputs, model_last_layer_distr)
 
@@ -85,11 +86,12 @@ def validation_step(model: Module, criterion: LossFunction, inputs: Tensor,
 
 
 def run(name: str, optimizer: Optimizer, criterion: LossFunction,
-        model: Module, train_dataloader: DataLoader,  epochs: int = 100,
+        model: Module, train_dataloader: DataLoader, epochs: int = 100,
         valid_dataloader: DataLoader = None, early_stopping: int = None,
+        test_data_x: Tensor = None, test_data_y: Tensor = None,
         neptune_logger: Any = None, tqdm_description: str = None,
-        return_best_model: bool = True, knn_use_indicies: bool = False,
-        loss_type: LossFuncType = LossFuncType.BASIC,
+        return_best_model: bool = True, knn_use_indices: bool = False,
+        eval_freq: int = None, loss_type: LossFuncType = LossFuncType.BASIC,
         output_directory: str = 'results/models'
         ) -> Tuple[Module, List[float], List[float]]:
 
@@ -98,10 +100,10 @@ def run(name: str, optimizer: Optimizer, criterion: LossFunction,
         Non-trivial arguments:
             neptune_logger: pass an neptune experiment object to track
                 the experiment using neptune.ai service
-            knn_use_indicies: some of the loss fuctions use inputs
-                (examples) to retireve the nearest neighboorhood of a point.
+            knn_use_indices: some of the loss functions use inputs
+                (examples) to retrieve the nearest neighboorhood of a point.
                 Provided kNN wrappers are capable of caching partial results
-                which can be accessed using indicies, not raw vectors.
+                which can be accessed using indices, not raw vectors.
     """
 
     training_loss_history, validation_loss_history = [], []
@@ -123,7 +125,7 @@ def run(name: str, optimizer: Optimizer, criterion: LossFunction,
         # Training loop
         for idx, inputs, labels in train_dataloader:
             loss = training_step(model, criterion, optimizer, inputs, idx,
-                                 labels, loss_type, knn_use_indicies)
+                                 labels, loss_type, knn_use_indices)
             training_loss.append(loss)
 
         mean_train_loss = np.mean(training_loss)
@@ -137,7 +139,7 @@ def run(name: str, optimizer: Optimizer, criterion: LossFunction,
         if valid_dataloader is not None:
             for idx, inputs, labels in valid_dataloader:
                 loss = validation_step(model, criterion, inputs, idx,
-                                       labels, loss_type, knn_use_indicies)
+                                       labels, loss_type, knn_use_indices)
                 validation_loss.append(loss)
 
             mean_validation_loss = np.mean(validation_loss)
@@ -153,11 +155,19 @@ def run(name: str, optimizer: Optimizer, criterion: LossFunction,
             # Tracking current best loss (early-stopping)
             if best_validation_loss - mean_validation_loss > 0.003:
                 best_validation_loss = mean_validation_loss
-                best_model = 'temp_best_model.p5'
+                best_model = f'{name}_temp_best_model.p5'
                 torch.save(model.state_dict(), best_model)
                 no_change_counter = -1
 
             no_change_counter += 1
+
+        # Evaluate current state of the model
+        if eval_freq is not None and epoch > 0 and epoch % eval_freq == 0:
+            metrics = evaluate_binary(model, test_data_x, test_data_y)
+
+            if neptune_logger is not None:
+                for metric, value in metrics.items():
+                    neptune_logger.log_metric(metric, value)
 
         # Early stopping
         if early_stopping is not None and no_change_counter >= early_stopping:
@@ -188,18 +198,32 @@ def run(name: str, optimizer: Optimizer, criterion: LossFunction,
 
 
 def evaluate_binary(model: Module, test_x: Tensor, test_y: Tensor,
-                    metrics: Dict[str, Metric] = None) -> List[float]:
+                    metrics: Dict[str, Metric] = None) -> Dict[str, float]:
 
     """ Evaluates the given model. If the model uses Tanh as output
         activation the function will decrese the threshold from 0.5
         to 0. It's also makes sure that the target is in range [0, 1] """
 
+    # FIXME: assert length(test_y.unique()) == 2
+
     # Set-up metrics
-    default_metrics = {'precision': precision_score, 'recall': recall_score}
+    default_metrics = {
+        'precision': precision_score,
+        'recall': recall_score,
+        'accuracy': accuracy_score,
+        'f1_score': f1_score
+    }
+
     if metrics is None:
         metrics = default_metrics
 
     # Set threshold
+    # FIXME: This solution supports Sigmoid and Tanh only.
+    #        The threshold should be based on `test_y` vector.
+    #        E. g. test_y.unique() == [-1, 1] -> thr = 0.
+    #              test_y.unique() = [0, 1] -> th = 0.5
+    # threshold = test_y.unique().mean()
+
     threshold = 0.5
     last_layer_type = type(list(model.modules())[-1])
     if last_layer_type is torch.nn.Tanh:

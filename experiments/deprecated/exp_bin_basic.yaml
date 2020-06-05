@@ -33,3 +33,4 @@ EXPERIMENT:
   OUTPUT_ACTIVATIONS: ['tanh', 'sigmoid']
   EPOCHS: 2048
   EARLY_STOPPING: 64
+  EVAL: null
