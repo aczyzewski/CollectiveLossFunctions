@@ -44,21 +44,18 @@ def run_experiments(args: argparse.Namespace,
     """ Runs experiments """
 
     def _debug(text: str) -> None:
-        """ Prints statemets only if args.debug or arg.verbose
-            flag is set """
+        """ Prints debugs statemets only if args.debug or arg.verbose
+            flag was set to True """
         if args.debug or args.verbose:
             print(f'[INFO] {text}')
 
     if args.useneptune:
-        _debug('Neptune.AI enabled.')
+        _debug('Neptune.AI was enabled.')
         neptune.init(neptuneai_project_id)
 
-    _debug(f'Config file path: {args.config}')
+    _debug(f'Current configuration file path: {args.config}')
     data_yaml_params, knn_yaml_params, exp_yaml_params = \
         helpers.load_config_file(args.config)
-
-    device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
-    _debug(f'Device: {device}')
 
     # -- LEVEL 0: CACHE DATASET
     for data_params in utils.iterparams(data_yaml_params):
@@ -67,7 +64,7 @@ def run_experiments(args: argparse.Namespace,
                                      use_umap=data_params.USE_UMAP)
         (train_x, train_y), (val_x, val_y), (test_x, test_y) = utils.split_data(
             x, y, val_size=data_params.VAL_SIZE, test_size=data_params.TEST_SIZE)
-        _debug(f'Dataset: {data_params.DATASET}\n')
+        _debug(f'Current dataset: {data_params.DATASET}\n')
 
         # TODO: output_shape = ...
 
@@ -80,7 +77,7 @@ def run_experiments(args: argparse.Namespace,
                 train_val_y = np.concatenate((train_y, val_y), axis=0)
                 knn = FaissKNN(train_val_x, train_val_y,
                                precompute=True, k=knn_params.K)
-                _debug(f'kNN wrapper initialized (k = {knn_params.K}).\n')
+                _debug(f'kNN wrapper was initialized (k = {knn_params.K}).\n')
 
             # -- LEVEL 2: RUN EXPERIMENTS
             for exp_params in utils.iterparams(exp_yaml_params):
@@ -148,7 +145,7 @@ def run_experiments(args: argparse.Namespace,
 
                 # Prepare the experiment
                 all_params = {**data_params, **knn_params, **exp_params}
-                _debug(f'Params: \n {all_params}')
+                _debug(f'Paramters: \n {all_params}')
 
                 unified_dataset_name = datasets.simplify_dataset_name(data_params.DATASET)
                 experiment_name = f'{unified_dataset_name}_{exp_params.FUNCTION_NAME}_{exp_params.FUNCTION_TYPE}'
@@ -197,7 +194,7 @@ def run_experiments(args: argparse.Namespace,
                 # Evaluate the model
                 metrics = trainingloop.evaluate_binary(model, test_data_x,
                                                        test_data_y)
-                _debug(f'Done! Evaluation results: \n{metrics}\n')
+                _debug(f'Done! The evaluation results: \n{metrics}\n')
 
                 if args.useneptune:
                     for metric, value in metrics.items():

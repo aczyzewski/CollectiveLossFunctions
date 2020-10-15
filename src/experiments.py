@@ -19,7 +19,8 @@ class LossFuncType(Enum):
     BASIC = 0,      # Basic loss function
     ENTR_W = 1,     # Entropy-weighted
     ENTR_R = 2,     # Entropy-regularized
-    CLF = 3         # Collective
+    CLF = 3,        # Collective
+    AVG_W = 4       # Avg weighted
 
     @staticmethod
     def from_string(value: str) -> LossFuncType:
@@ -29,7 +30,8 @@ class LossFuncType(Enum):
             'basic': LossFuncType.BASIC,
             'entr_r': LossFuncType.ENTR_R,
             'entr_w': LossFuncType.ENTR_W,
-            'collective': LossFuncType.CLF
+            'collective': LossFuncType.CLF,
+            'avg_w': LossFuncType.AVG_W
         }
         return mapping[value]
 
@@ -41,15 +43,19 @@ class LossFuncType(Enum):
             LossFuncType.BASIC: 'basic',
             LossFuncType.ENTR_R: 'entr_r',
             LossFuncType.ENTR_W: 'entr_w',
-            LossFuncType.CLF: 'collective'
+            LossFuncType.CLF: 'collective',
+            LossFuncType.AVG_W: 'avg_w'
         }
         return mapping[value]
 
 
-def get_loss_function(fname: str, ftype: Union[LossFuncType, str]
-                      ) -> Tuple[bool, LossFunction]:
+def get_loss_function(fname: str, ftype: Union[LossFuncType, str],
+                      return_range: bool = True) -> Tuple[bool, LossFunction]:
     """ Retruns loss function of the given name and type and boolean
         value that determine target range of the criterion. """
+
+    if isinstance(ftype, str):
+        ftype = LossFuncType.from_string(ftype)
 
     _std_range_funcs = set(['bce'])
     _str_func_mapping = {
@@ -75,13 +81,13 @@ def get_loss_function(fname: str, ftype: Union[LossFuncType, str]
         }
     }
 
-    if isinstance(ftype, str):
-        ftype = LossFuncType.from_string(ftype)
-
     extended_target_range = fname not in _std_range_funcs
     function = _str_func_mapping[fname][ftype]
 
-    return extended_target_range, function
+    if return_range:
+        return extended_target_range, function
+
+    return function
 
 
 def load_config_file(path: str) -> Tuple[dict, dict, dict]:

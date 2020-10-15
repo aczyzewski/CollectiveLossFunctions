@@ -161,6 +161,8 @@ def EntropyRegularizedBinaryLoss(base_loss_function: LossFunction,
         assert kl_div_score.shape == target.shape, \
             'Invalid KL divergence output shape!'
 
+        #print(base_loss.max())
+        #print(kl_div_score.max() / 12)
         # Sometimes the loss value is a bit lower than zero (e.g. 1e-10)
         regularized_loss = torch.max(Tensor([0.]), base_loss + kl_div_score)
         reduction_method = get_reduction_method(reduction)
@@ -168,6 +170,35 @@ def EntropyRegularizedBinaryLoss(base_loss_function: LossFunction,
         return reduction_method(regularized_loss)
 
     return entropy_regularized_bin_loss
+
+
+# --- Avg Weighted loss functions
+def AvgWeightedBinaryLoss(base_loss_function: LossFunction,
+                          knn: AbstractKNN) -> LossFunction:
+    """ Calculates pure loss function (`base_loss_fuction`)
+        weighted by the entropy of a neighboorhood """
+
+    @lossfunction
+    def avg_weighted_bin_loss(prediction: Tensor, target: Tensor,
+                              inputs: Tensor, reduction: str = 'mean'
+                              ) -> Union[float, Tensor]:
+
+        _, _, classes = knn.get(inputs.numpy(), exclude_query=True)
+        classes = Tensor(classes)
+
+        avg_class = (classes.sum(dim=1) / knn.k).reshape(-1, 1)
+        assert avg_class.shape == target.shape, 'Invalid avg class shape!'
+
+        base_loss = base_loss_function(prediction, target, reduction='none')
+        assert base_loss.shape == target.shape, 'Invalid base loss shape!'
+
+        avg_weight = torch.abs(target - avg_class)
+        loss = torch.exp(-1 * avg_weight) * base_loss
+
+        reduction_method = get_reduction_method(reduction)
+        return reduction_method(loss)
+
+    return avg_weighted_bin_loss
 
 
 # --- Collective loss functions

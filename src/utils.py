@@ -13,9 +13,8 @@ class dotdict(dict):
     """ dot.notation access to dictionary attributes """
     def __getattr__(self, key: Any) -> Any:
         if key in self.keys():
-            return self.get(key)
-        else:
-            raise KeyError(key)
+            return self[key]
+
     __setattr__ = dict.__setitem__
     __delattr__ = dict.__delitem__
 
